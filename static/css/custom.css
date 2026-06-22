@@ -1,0 +1,216 @@
+/* UGVCL Portal Contract Manager - Custom Premium Styles */
+
+:root {
+    --navy-blue: #002B49;
+    --navy-light: #003e68;
+    --navy-dark: #00192b;
+    --teal-blue: #0077b6;
+    --cyan-accent: #00b4d8;
+    --orange-accent: #fb8500;
+    --yellow-accent: #ffb703;
+    --bg-light: #f8f9fa;
+    --success-green: #2a9d8f;
+    --danger-red: #e76f51;
+    --gray-text: #6c7a89;
+    --light-gray: #f3f4f6;
+}
+
+body {
+    font-family: 'Outfit', sans-serif !important;
+    background-color: var(--bg-light);
+    color: var(--navy-dark);
+}
+
+/* Sidebar Custom Styling */
+.main-sidebar {
+    background-color: var(--navy-blue) !important;
+    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15) !important;
+}
+
+.sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link.active,
+.sidebar-dark-navy .nav-sidebar > .nav-item > .nav-link:hover {
+    background: linear-gradient(90deg, var(--teal-blue) 0%, var(--cyan-accent) 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 180, 216, 0.3);
+}
+
+.brand-link {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.letter-spacing-1 {
+    letter-spacing: 1px;
+}
+
+/* Gradient Background Box Styling */
+.bg-navy-gradient {
+    background: linear-gradient(135deg, var(--navy-blue) 0%, var(--navy-light) 100%) !important;
+}
+
+.bg-blue-gradient {
+    background: linear-gradient(135deg, var(--teal-blue) 0%, var(--cyan-accent) 100%) !important;
+}
+
+.bg-orange-gradient {
+    background: linear-gradient(135deg, #e76f51 0%, var(--orange-accent) 100%) !important;
+}
+
+.bg-green-gradient {
+    background: linear-gradient(135deg, #1d3557 0%, var(--success-green) 100%) !important;
+}
+
+.small-box {
+    border-radius: 15px !important;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.small-box:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.small-box .icon {
+    font-size: 55px;
+    opacity: 0.15;
+    transition: all 0.3s ease;
+}
+
+.small-box:hover .icon {
+    transform: scale(1.1);
+    opacity: 0.25;
+}
+
+/* Premium UI Elements */
+.card {
+    border-radius: 15px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04) !important;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.card:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+}
+
+.btn-navy {
+    background-color: var(--navy-blue);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 4px 10px rgba(0, 43, 73, 0.2);
+    transition: all 0.3s;
+}
+
+.btn-navy:hover {
+    background-color: var(--navy-light);
+    color: #ffffff;
+    box-shadow: 0 6px 15px rgba(0, 43, 73, 0.4);
+    transform: translateY(-1px);
+}
+
+.btn-outline-navy {
+    border: 2px solid var(--navy-blue);
+    color: var(--navy-blue);
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-outline-navy:hover {
+    background-color: var(--navy-blue);
+    color: #ffffff;
+}
+
+/* Custom Table Grid styling for Excel-like feel */
+.table-grid {
+    border-collapse: collapse;
+}
+
+.table-grid th {
+    background-color: var(--navy-blue) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    padding: 10px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.table-grid td {
+    padding: 0 !important;
+    vertical-align: middle;
+}
+
+.table-grid td input, .table-grid td select {
+    border-radius: 0 !important;
+    height: 38px;
+    margin: 0;
+    background-color: transparent;
+    transition: background-color 0.2s;
+}
+
+.table-grid td input:focus, .table-grid td select:focus {
+    background-color: rgba(0, 180, 216, 0.08) !important;
+    box-shadow: inset 0 0 0 2px var(--cyan-accent) !important;
+    outline: none;
+}
+
+.table-grid tr:hover td {
+    background-color: rgba(0, 43, 73, 0.02);
+}
+
+.bg-success-subtle {
+    background-color: rgba(42, 157, 143, 0.15) !important;
+}
+
+/* Step badges for Auto Workflow */
+.step-badge {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.preloader {
+    background-color: var(--bg-light) !important;
+}
+
+.preloader .spinner-border {
+    color: var(--navy-blue) !important;
+}
+
+/* Custom Collapsible Items Details toggles */
+button[aria-expanded="true"] .show-text {
+    display: none !important;
+}
+button[aria-expanded="true"] .hide-text {
+    display: inline-block !important;
+}
+button[aria-expanded="false"] .show-text {
+    display: inline-block !important;
+}
+button[aria-expanded="false"] .hide-text {
+    display: none !important;
+}
+
+/* Proper Crisp Borders for Tables */
+.table-bordered {
+    border: 1px solid #cbd5e1 !important;
+}
+
+.table-bordered th,
+.table-bordered td {
+    border: 1px solid #cbd5e1 !important;
+}
+
+/* Ensure table headers stand out with solid borders and premium background */
+.table thead.thead-light th,
+.table thead.table-light th {
+    background-color: var(--light-gray) !important;
+    border-bottom: 2px solid #a1a1aa !important;
+    color: var(--navy-blue) !important;
+    font-weight: 700 !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.015) !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 43, 73, 0.04) !important;
+}
+

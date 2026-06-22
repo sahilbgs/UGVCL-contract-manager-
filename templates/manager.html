@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}Manager Dashboard | UGVCL Portal Contract Manager{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Clickable Sub-WO rows */
+    tr.ro-row-clickable {
+        cursor: pointer;
+        transition: background-color 0.18s ease, box-shadow 0.18s ease;
+    }
+    tr.ro-row-clickable:hover {
+        background-color: rgba(0, 31, 63, 0.06) !important;
+        box-shadow: inset 4px 0 0 0 var(--navy-blue, #001f3f);
+    }
+
+    /* Farmer summary mini-badges */
+    .farmer-summary-badge {
+        font-size: 0.70rem;
+        padding: 2px 7px;
+        border-radius: 10rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+    <h1 class="h3 mb-0 text-navy font-weight-bold">
+        <i class="fas fa-tasks mr-2 text-navy"></i>Manager Dashboard
+    </h1>
+    <div class="col-md-4">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="managerSearch" class="form-control border-start-0" placeholder="Search Work Orders, POs, Sub-WOs...">
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        {% if work_orders %}
+            {% for wo in work_orders %}
+                <div class="card card-navy card-outline mb-4 shadow-sm wo-card" data-search-content="{{ wo.work_order_no|lower }} {{ wo.po_no|lower }} {{ wo.contractor_name|lower }}">
+                    <div class="card-header bg-light d-flex flex-wrap justify-content-between align-items-center py-2 px-3">
+                        <div class="d-flex align-items-center py-1">
+                            <i class="fas fa-file-contract fa-lg text-navy mr-2"></i>
+                            <h5 class="m-0 font-weight-bold text-navy" style="font-size: 1.05rem;">
+                                Work Order: <span class="text-primary">{{ wo.work_order_no }}</span> 
+                                <span class="badge bg-navy text-warning ml-2 font-weight-bold" style="font-size: 0.75rem;">PO: {{ wo.po_no }}</span>
+                            </h5>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 py-1">
+                            <span class="badge bg-light text-navy border px-2 py-1 font-weight-bold text-xs">
+                                <i class="fas fa-user-tie mr-1"></i>Contractor: {{ wo.contractor_name or 'N/A' }}
+                            </span>
+                            <span class="badge bg-success-subtle text-success px-2 py-1 font-weight-bold text-xs">
+                                Value: ₹{{ "{:,.2f}".format(wo.contract_amount) }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-bordered table-hover mb-0 align-middle text-center text-sm">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th style="width: 14%;">Sub-Work Order #</th>
+                                        <th style="width: 13%;">Release Date</th>
+                                        <th style="width: 13%;">Amount</th>
+                                        <th style="width: 12%;">Linked Farmers</th>
+                                        <th style="width: 10%;">Status</th>
+                                        <th style="width: 24%;">Farmer Summary</th>
+                                        <th style="width: 14%;">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if wo.release_orders %}
+                                        {% for ro in wo.release_orders %}
+                                            <tr class="ro-row ro-row-clickable" data-href="{{ url_for('manager_sub_order_detail', ro_id=ro.id) }}" data-search-content="{{ ro.release_no|lower }} {{ ro.scheme|lower }}">
+                                                <td class="font-weight-bold text-navy">
+                                                    Sub-WO #{{ ro.release_no }}
+                                                    {% if ro.scheme %}
+                                                        <br><small class="text-muted">Scheme: {{ ro.scheme }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <i class="far fa-calendar-alt mr-1 text-muted"></i>
+                                                    {{ ro.release_date.strftime('%d-%b-%Y') if ro.release_date else 'N/A' }}
+                                                </td>
+                                                <td class="font-weight-bold text-success">
+                                                    ₹{{ "{:,.2f}".format(ro.release_amount) }}
+                                                </td>
+                                                <td>
+                                                    <span class="badge bg-light text-navy border font-weight-bold">
+                                                        <i class="fas fa-users mr-1"></i>{{ ro.farmers|length }} Farmers
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {% if ro.status == 'Pending' %}
+                                                        <span class="badge bg-secondary px-2 py-1">Pending</span>
+                                                    {% elif ro.status == 'Active' %}
+                                                        <span class="badge bg-primary px-2 py-1">Active</span>
+                                                    {% elif ro.status == 'Disputed' %}
+                                                        <span class="badge bg-danger px-2 py-1">Disputed</span>
+                                                    {% elif ro.status == 'In Progress' %}
+                                                        <span class="badge bg-warning text-dark px-2 py-1">In Progress</span>
+                                                    {% elif ro.status == 'Completed' %}
+                                                        <span class="badge bg-success px-2 py-1">Completed</span>
+                                                    {% else %}
+                                                        <span class="badge bg-secondary px-2 py-1">{{ ro.status }}</span>
+                                                    {% endif %}
+                                                </td>
+                                                {# ── Farmer Status Summary ── #}
+                                                <td>
+                                                    {% set ns = namespace(active=0, disputed=0, pending=0, started=0, completed=0, other=0) %}
+                                                    {% for f in ro.farmers %}
+                                                        {% if f.status == 'Active' %}
+                                                            {% set ns.active = ns.active + 1 %}
+                                                        {% elif f.status == 'Disputed' %}
+                                                            {% set ns.disputed = ns.disputed + 1 %}
+                                                        {% elif f.status == 'Pending' %}
+                                                            {% set ns.pending = ns.pending + 1 %}
+                                                        {% elif f.status == 'Started' %}
+                                                            {% set ns.started = ns.started + 1 %}
+                                                        {% elif f.status == 'Completed' %}
+                                                            {% set ns.completed = ns.completed + 1 %}
+                                                        {% else %}
+                                                            {% set ns.other = ns.other + 1 %}
+                                                        {% endif %}
+                                                    {% endfor %}
+
+                                                    <div class="d-flex flex-wrap justify-content-center gap-1">
+                                                        {% if ns.active %}
+                                                            <span class="farmer-summary-badge badge bg-primary">{{ ns.active }} Active</span>
+                                                        {% endif %}
+                                                        {% if ns.disputed %}
+                                                            <span class="farmer-summary-badge badge bg-danger">{{ ns.disputed }} Disputed</span>
+                                                        {% endif %}
+                                                        {% if ns.pending %}
+                                                            <span class="farmer-summary-badge badge bg-secondary">{{ ns.pending }} Pending</span>
+                                                        {% endif %}
+                                                        {% if ns.started %}
+                                                            <span class="farmer-summary-badge badge bg-warning text-dark">{{ ns.started }} Started</span>
+                                                        {% endif %}
+                                                        {% if ns.completed %}
+                                                            <span class="farmer-summary-badge badge bg-success">{{ ns.completed }} Completed</span>
+                                                        {% endif %}
+                                                        {% if ns.other %}
+                                                            <span class="farmer-summary-badge badge bg-dark">{{ ns.other }} Other</span>
+                                                        {% endif %}
+                                                        {% if ro.farmers|length == 0 %}
+                                                            <span class="text-muted text-xs">—</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                                {# ── Consumption / Detail Link (always shown) ── #}
+                                                <td>
+                                                    <a href="{{ url_for('manager_sub_order_detail', ro_id=ro.id) }}" class="btn btn-xs btn-navy font-weight-bold px-2 btn-consumption" title="Manage material consumption grid">
+                                                        <i class="fas fa-table mr-1 text-warning"></i> Consumption
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    {% else %}
+                                        <tr>
+                                            <td colspan="7" class="text-center py-3 text-muted">
+                                                No Sub-Work Orders registered under this Work Order.
+                                            </td>
+                                        </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="card card-navy card-outline text-center py-5 shadow-sm">
+                <div class="card-body">
+                    <i class="fas fa-tasks fa-3x mb-3 text-gray-300"></i>
+                    <h5 class="text-muted font-weight-bold">No Work Orders Found</h5>
+                    <p class="text-muted text-sm mb-0">Please create a Work Order and Release Order from the Admin dashboard first.</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+
+        /* ── Clickable Sub-WO rows ── */
+        $(document).on('click', 'tr.ro-row-clickable', function(e) {
+            // Don't navigate if user clicked on the Consumption button / link inside it
+            if ($(e.target).closest('.btn-consumption').length) {
+                return; // let the anchor handle it naturally
+            }
+            var href = $(this).data('href');
+            if (href) {
+                window.location.href = href;
+            }
+        });
+
+        /* ── Search filtering (unchanged logic) ── */
+        $('#managerSearch').on('keyup', function() {
+            var val = $(this).val().toLowerCase();
+            if (val === '') {
+                $('.wo-card').show();
+                $('.ro-row').show();
+                return;
+            }
+            
+            $('.wo-card').each(function() {
+                var woCard = $(this);
+                var woSearchContent = woCard.attr('data-search-content') || '';
+                var woMatches = woSearchContent.indexOf(val) > -1;
+                
+                var roMatchesCount = 0;
+                woCard.find('.ro-row').each(function() {
+                    var roRow = $(this);
+                    var roSearchContent = roRow.attr('data-search-content') || '';
+                    if (roSearchContent.indexOf(val) > -1 || woMatches) {
+                        roRow.show();
+                        roMatchesCount++;
+                    } else {
+                        roRow.hide();
+                    }
+                });
+                
+                if (woMatches || roMatchesCount > 0) {
+                    woCard.show();
+                } else {
+                    woCard.hide();
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

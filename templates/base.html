@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}UGVCL Portal Contract Manager{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <!-- Preloader -->
+    <div class="preloader flex-column justify-content-center align-items-center">
+        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <!-- Left navbar links -->
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars text-navy"></i></a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="{{ url_for('inventory') }}" class="nav-link font-weight-bold">Home</a>
+            </li>
+        </ul>
+
+        <!-- Right navbar links -->
+        <ul class="navbar-nav ml-auto align-items-center">
+            <li class="nav-item dropdown user-menu">
+                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown">
+                    <i class="fas fa-user-circle fa-lg text-navy mr-1"></i>
+                    <span class="d-none d-md-inline font-weight-bold">{{ current_user.username or 'Admin' }}</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right shadow border-0">
+                    <!-- User image -->
+                    <li class="user-header bg-navy text-white text-center py-4">
+                        <i class="fas fa-user-shield fa-3x mb-2 text-warning"></i>
+                        <p class="mb-0 font-weight-bold">
+                            {{ current_user.username or 'Admin' }} - Administrator
+                        </p>
+                        <small>UGVCL Contract Manager Portal</small>
+                    </li>
+                    <!-- Menu Footer-->
+                    <li class="user-footer bg-light d-flex justify-content-between p-3">
+                        <a href="#" class="btn btn-outline-secondary btn-flat rounded">Profile</a>
+                        <a href="{{ url_for('logout') }}" class="btn btn-danger btn-flat rounded">Sign out</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+    <!-- /.navbar -->
+
+    <!-- Main Sidebar Container -->
+    <aside class="main-sidebar sidebar-dark-navy elevation-4">
+        <!-- Brand Logo -->
+        <a href="{{ url_for('inventory') }}" class="brand-link text-center bg-navy py-3">
+            <span class="brand-text font-weight-bold text-warning letter-spacing-1">
+                <i class="fas fa-bolt mr-2 text-warning"></i>UGVCL PORTAL
+            </span>
+        </a>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Sidebar Menu -->
+            <nav class="mt-4">
+                <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
+                    <li class="nav-header">CONTRACT MANAGEMENT</li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('work_orders_list') }}" class="nav-link {% if request.endpoint == 'work_orders_list' or request.endpoint == 'work_order_details' %}active{% endif %}">
+                            <i class="nav-icon fas fa-file-contract"></i>
+                            <p>Work Orders</p>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('manager_dashboard') }}" class="nav-link {% if request.endpoint == 'manager_dashboard' or request.endpoint == 'manager_sub_order_detail' %}active{% endif %}">
+                            <i class="nav-icon fas fa-tasks"></i>
+                            <p>Manager Dashboard</p>
+                        </a>
+                    </li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-header">MATERIAL & INVENTORY</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('inventory') }}" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}">
+                            <i class="nav-icon fas fa-boxes-stacked"></i>
+                            <p>Main Inventory</p>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <!-- /.sidebar-menu -->
+        </div>
+        <!-- /.sidebar -->
+    </aside>
+
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <div class="content-header">
+            <div class="container-fluid">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm" role="alert">
+                                <strong>{% if category == 'success' %}<i class="fas fa-check-circle mr-2"></i>{% else %}<i class="fas fa-exclamation-circle mr-2"></i>{% endif %}</strong> {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        <!-- /.content-header -->
+
+        <!-- Main content -->
+        <section class="content">
+            <div class="container-fluid">
+                {% block content %}{% endblock %}
+            </div><!-- /.container-fluid -->
+        </section>
+        <!-- /.content -->
+    </div>
+    <!-- /.content-wrapper -->
+
+    <footer class="main-footer text-sm">
+        <strong>Copyright &copy; 2026 <a href="#" class="text-navy">UGVCL Contract Manager</a>.</strong>
+        All rights reserved.
+        <div class="float-right d-none d-sm-inline-block">
+            <b>Version</b> 1.0.0
+        </div>
+    </footer>
+</div>
+<!-- ./wrapper -->
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE App -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>
