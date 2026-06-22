@@ -5,7 +5,7 @@ from datetime import date
 
 EXCEL_COLUMNS = [
     'Sr No.',
-    'From Location To\nMR No./ Date',
+    'From Location To\nMR No./ Date\nPSC Pole 8 MTR',
     'Conducto 34mm 2wire',
     'Conductor 55 mm 3wire',
     'Conductor 34mm  4wire',
@@ -699,7 +699,7 @@ def generate_release_excel(ro):
     ws_mr.write_merge(2, 2, 6, 20, ro.work_order.work_order_no or '', meta_small_center_style)
 
     # Row 3: MR Custom Headers (rotate material columns, keep receipt meta horizontal)
-    ws_mr.write(3, 0, 'From Location To\nMR No./ Date', header_style)
+    ws_mr.write(3, 0, 'From Location To\nMR No./ Date\nPSC Pole 8 MTR', header_style)
     ws_mr.write(3, 1, '', header_style)
     ws_mr.write(3, 2, '', header_style)
     for col_idx in range(3, len(EXCEL_COLUMNS)):
