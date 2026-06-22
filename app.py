@@ -523,7 +523,7 @@ def add_release_order():
                 from ocr_parser import normalize_mr_number
                 receipt_no = normalize_mr_number(receipt_no)
                 
-                existing_receipt = MaterialReceipt.query.filter_by(receipt_no=receipt_no).first()
+                existing_receipt = MaterialReceipt.query.filter_by(release_order_id=ro.id, receipt_no=receipt_no).first()
                 if not existing_receipt:
                     receipt = MaterialReceipt(
                         release_order_id=ro.id,
@@ -750,7 +750,7 @@ def save_release_order_ocr():
             from ocr_parser import normalize_mr_number
             receipt_no = normalize_mr_number(receipt_no)
             
-            existing_receipt = MaterialReceipt.query.filter_by(receipt_no=receipt_no).first()
+            existing_receipt = MaterialReceipt.query.filter_by(release_order_id=ro.id, receipt_no=receipt_no).first()
             if not existing_receipt:
                 receipt = MaterialReceipt(
                     release_order_id=ro.id,
