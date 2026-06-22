@@ -5,6 +5,10 @@ from datetime import date
 from models import db, User, WorkOrder, ReleaseOrder, Material, MaterialReceipt, MaterialReceiptItem, CreditReceipt, DocumentVault, Farmer, FarmerMaterial
 from app import app
 
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+SAMPLES_DIR = os.path.join(TEST_DIR, 'samples')
+
+
 @pytest.fixture
 def client():
     app.config['TESTING'] = True
@@ -482,7 +486,7 @@ def test_farmer_pdf_upload_and_save_flow(client):
         ro_id = ro.id
         
         # We will upload the actual PDF to trigger the pre-verified Release 1 list
-        pdf_path = r"c:\Users\sahil\OneDrive\Desktop\ugvcl portal contract manager\WhatsApp Scan 2026-04-07 at 11.35.34.pdf"
+        pdf_path = os.path.join(SAMPLES_DIR, 'WhatsApp Scan 2026-04-07 at 11.35.34.pdf')
         
         with open(pdf_path, 'rb') as f:
             from io import BytesIO
@@ -540,7 +544,7 @@ def test_combined_pdf_flow(client):
         
         wo_id = wo.id
         
-        pdf_path = r"C:\Users\sahil\.gemini\antigravity\brain\e265e471-1e0e-4a61-9c09-544302f1f63a\media__1782024645219.pdf"
+        pdf_path = os.path.join(SAMPLES_DIR, 'media__1782024645219.pdf')
         
         # 1. Test OCR upload endpoint for Release Order
         with open(pdf_path, 'rb') as f:
