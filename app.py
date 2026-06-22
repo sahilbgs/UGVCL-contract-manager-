@@ -1630,6 +1630,59 @@ def receipt_delete(receipt_id):
         flash(f'Error deleting Material Receipt: {e}', 'danger')
     return redirect(url_for('inventory'))
 
+@app.route('/work-orders/release-order/delete/<int:ro_id>', methods=['POST', 'GET'])
+@admin_required
+def delete_release_order(ro_id):
+    from models import MaterialReceiptItem, Farmer, FarmerMaterial, Bill
+    ro = ReleaseOrder.query.get_or_404(ro_id)
+    work_order_id = ro.work_order_id
+    try:
+        # 1. Clean up associated DocumentVault entries
+        DocumentVault.query.filter(
+            (DocumentVault.related_id == ro.id) & 
+            ((DocumentVault.doc_type == 'Release Order') | (DocumentVault.doc_type == 'Farmer List'))
+        ).delete()
+        
+        # 2. Revert Central Inventory for any Material Receipt items under this Release Order
+        for receipt in ro.receipts:
+            for item in receipt.items:
+                m = Material.query.filter_by(name=item.material_name).first()
+                if m:
+                    m.received_qty = max(0, m.received_qty - item.qty)
+            MaterialReceiptItem.query.filter_by(receipt_id=receipt.id).delete()
+            db.session.delete(receipt)
+            
+        # 3. Handle Farmers linked to this Release Order: revert inventory and delete
+        for farmer in ro.farmers:
+            for fm in farmer.materials:
+                m = Material.query.filter_by(name=fm.material_name).first()
+                if m:
+                    m.issued_qty = max(0, m.issued_qty - fm.qty_issued)
+                    m.consumed_qty = max(0, m.consumed_qty - fm.qty_consumed)
+                db.session.delete(fm)
+            db.session.delete(farmer)
+            
+        # 4. Clean up any Bills associated with this Release Order
+        for bill in ro.bills:
+            DocumentVault.query.filter_by(related_id=bill.id, doc_type='Bill').delete()
+            db.session.delete(bill)
+            
+        # 5. Restore WorkOrder balance amount
+        wo = ro.work_order
+        if wo:
+            wo.balance_amount = min(wo.contract_amount, wo.balance_amount + ro.release_amount)
+            
+        # 6. Delete the Release Order
+        db.session.delete(ro)
+        db.session.commit()
+        flash('Sub-Work Order deleted successfully and inventory adjusted.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Error deleting Sub-Work Order: {e}', 'danger')
+        
+    return redirect(url_for('work_order_details', wo_id=work_order_id))
+
+
 @app.route('/inventory/credit/delete/<int:credit_id>')
 @admin_required
 def credit_delete(credit_id):

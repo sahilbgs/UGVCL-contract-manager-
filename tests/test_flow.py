@@ -1195,3 +1195,49 @@ def test_multiple_farmers_grouping_excel(client):
     assert sub_total.cell_value(16, 6) == 34.0
 
 
+def test_delete_release_order(client):
+    from models import WorkOrder, ReleaseOrder
+    
+    login_as_admin(client)
+    
+    # 1. Create a WorkOrder
+    wo = WorkOrder(
+        work_order_no='WO-DEL-TEST',
+        po_no='999000',
+        contract_amount=Decimal('50000.00'),
+        balance_amount=Decimal('40000.00')
+    )
+    db.session.add(wo)
+    db.session.commit()
+    wo_id = wo.id
+    
+    # 2. Create a ReleaseOrder
+    ro = ReleaseOrder(
+        work_order_id=wo_id,
+        release_no='1',
+        po_no='999000',
+        release_amount=Decimal('10000.00'),
+        remaining_amount=Decimal('10000.00'),
+        status='Pending'
+    )
+    db.session.add(ro)
+    db.session.commit()
+    
+    ro_id = ro.id
+    
+    # Verify it exists in db
+    assert ReleaseOrder.query.get(ro_id) is not None
+    
+    # 3. Call delete endpoint
+    res = client.get(f'/work-orders/release-order/delete/{ro_id}')
+    assert res.status_code == 302 # Redirects back to work order details page
+    
+    # Verify it is deleted from db
+    assert ReleaseOrder.query.get(ro_id) is None
+    
+    # Verify WorkOrder balance amount is restored to contract_amount (40000 + 10000 = 50000)
+    wo_db = WorkOrder.query.get(wo_id)
+    assert wo_db.balance_amount == Decimal('50000.00')
+
+
+

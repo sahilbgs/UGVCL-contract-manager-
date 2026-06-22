@@ -165,7 +165,12 @@
                                         <span class="badge bg-success text-white ms-1 px-2">Completed</span>
                                     {% endif %}
                                 </div>
-                                <small class="text-muted"><i class="far fa-calendar-alt mr-1"></i>{{ ro.release_date.strftime('%Y-%m-%d') if ro.release_date else 'N/A' }}</small>
+                                <div class="d-flex align-items-center">
+                                    <small class="text-muted"><i class="far fa-calendar-alt mr-1"></i>{{ ro.release_date.strftime('%Y-%m-%d') if ro.release_date else 'N/A' }}</small>
+                                    <a href="{{ url_for('delete_release_order', ro_id=ro.id) }}" class="text-danger ms-2" onclick="return confirm('Are you sure you want to delete this Sub-Work Order? This will delete associated farmers, receipts, and adjust inventory.');" title="Delete Sub-Work Order" style="font-size: 0.9rem; transition: color 0.2s ease;">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </div>
                             </div>
                             <div class="row g-2 mb-2 text-sm" style="font-size: 0.85rem;">
                                 <div class="col-6">
