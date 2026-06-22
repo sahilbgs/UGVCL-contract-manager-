@@ -1968,7 +1968,10 @@ def manager_save_consumption(ro_id):
                     raw_val = request.form.get(input_key_new, '')
                     
                 raw_val = raw_val.strip() if raw_val else ''
-                val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                if not raw_val and m_name == 'PSC Pole 8 MTR':
+                    val = Decimal('1.0')
+                else:
+                    val = Decimal(raw_val) if raw_val else Decimal('0.0')
                 
                 fm = FarmerMaterial.query.filter_by(farmer_id=f.id, material_name=m_name, pole_no='1').first()
                 if not fm:
@@ -1993,7 +1996,10 @@ def manager_save_consumption(ro_id):
                 for m_name in material_list:
                     input_key = f"consumed_{f.id}_{old_p}_{m_name}"
                     raw_val = request.form.get(input_key, '').strip()
-                    val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                    if not raw_val and m_name == 'PSC Pole 8 MTR':
+                        val = Decimal('1.0')
+                    else:
+                        val = Decimal(raw_val) if raw_val else Decimal('0.0')
                     
                     # Check if there is an existing record under old pole name
                     fm = FarmerMaterial.query.filter_by(farmer_id=f.id, material_name=m_name, pole_no=old_p).first()
