@@ -781,6 +781,11 @@
                                                         {% if float(req_qty) > 0 %}
                                                             <span class="req-hint">Est: {{ float(req_qty) }}</span>
                                                         {% endif %}
+                                                        {% if material_stocks[m_name] is defined and material_stocks[m_name] <= 0 %}
+                                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;">Not Available</span>
+                                                        {% elif material_stocks[m_name] is defined and float(req_qty) > 0 and material_stocks[m_name] < float(req_qty) %}
+                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;" title="Only {{ material_stocks[m_name] }} available in inventory">Low Stock</span>
+                                                        {% endif %}
 
                                                     {% elif is_completed %}
                                                         <input type="number" step="0.001"
@@ -831,6 +836,7 @@
 
 {% block extra_js %}
 <script>
+const materialStocks = {{ material_stocks | tojson }};
 function addPoleRow(farmerId) {
     var randId = Date.now() + "_" + Math.floor(Math.random() * 1000);
     var oldPoleVal = "new_" + randId;
@@ -875,6 +881,10 @@ function addPoleRow(farmerId) {
             valAttr = ' value="1"';
         }
         rowHtml += '  <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_{{ m_name }}" class="mat-input" placeholder="0"' + valAttr + '>';
+        var stock = materialStocks['{{ m_name }}'] !== undefined ? materialStocks['{{ m_name }}'] : 0.0;
+        if (stock <= 0) {
+            rowHtml += '  <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;">Not Available</span>';
+        }
         rowHtml += '</td>';
     {% endfor %}
     

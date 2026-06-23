@@ -1896,6 +1896,12 @@ def manager_sub_order_detail(ro_id):
     status_counts = {}
     for f in farmers:
         status_counts[f.status] = status_counts.get(f.status, 0) + 1
+        
+    # Get current stock for all materials in the list
+    material_stocks = {}
+    for name in material_list:
+        m = Material.query.filter_by(name=name).first()
+        material_stocks[name] = float(m.current_stock) if m else 0.0
                 
     return render_template(
         'manager_detail.html',
@@ -1908,6 +1914,7 @@ def manager_sub_order_detail(ro_id):
         required_pole_map=required_pole_map,
         consumption_map=consumption_map,
         farmer_poles=farmer_poles,
+        material_stocks=material_stocks,
         status_counts=status_counts,
         float=float,
         isinstance=isinstance,
