@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+import time
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, send_from_directory
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -13,6 +14,8 @@ from models import db, User, WorkOrder, ReleaseOrder, Material, MaterialReceipt,
 from auth import login_manager, seed_users
 from ocr_parser import parse_gate_pass_image
 
+from flask_wtf.csrf import CSRFProtect
+
 # Load dotenv if available
 try:
     from dotenv import load_dotenv
@@ -21,7 +24,23 @@ except ImportError:
     pass
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'ugvcl-secret-key-12948194')
+
+# Security: Secret key enforcement
+secret_key = os.environ.get('SECRET_KEY')
+flask_env = os.environ.get('FLASK_ENV', 'development')
+
+if not secret_key:
+    if flask_env == 'production':
+        raise RuntimeError("CRITICAL SECURITY ERROR: SECRET_KEY environment variable is missing in production environment!")
+    else:
+        print("[WARNING] SECRET_KEY not found in environment. Falling back to development secret key.")
+        secret_key = 'dev-fallback-secret-key-ugvcl-do-not-use-in-prod'
+
+app.config['SECRET_KEY'] = secret_key
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload limit
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
 
 # Database configuration: support MySQL if configured in environment, fallback to SQLite
 db_host = os.environ.get('MYSQL_HOST', 'localhost')
@@ -41,6 +60,8 @@ elif db_user:
     app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{db_user}:{encoded_pass}@{db_host}/{db_name}"
 else:
     # Fallback to local SQLite in workspace
+    if flask_env == 'production':
+        print("[CRITICAL WARNING] Running SQLite in production mode! High risk of database write concurrency locks.")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///ugvcl_contract_manager.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -54,6 +75,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Initialize db and login manager
 db.init_app(app)
 login_manager.init_app(app)
+
 
 from functools import wraps
 
@@ -69,60 +91,156 @@ def admin_required(f):
     return decorated_function
 
 COMMON_MATERIALS = [
-    ("PSC Pole 8 MTR", "Nos"),
-    ("PSC Pole 10 MTR", "Nos"),
-    ("Conducto 34mm 2wire", "Mtr"),
-    ("Conductor 34mm  4wire", "Mtr"),
-    ("Conductor 55 mm 3wire", "Mtr"),
-    ("Transformer 10 KVA", "Nos"),
-    ("Transformer 25 KVA", "Nos"),
-    ("Transformer 63 KVA", "Nos"),
-    ("Three Hole Parties", "Nos"),
-    ("V-x arm", "Nos"),
-    ("Top Fitting", "Nos"),
-    ("Side Clamp", "Nos"),
-    ("11kv Comp Pin Insulator", "Nos"),
-    ("11kv Pin Insulator", "Nos"),
-    ("11kv G.I. Pin", "Nos"),
-    ("11kv Shackle Insulator", "Nos"),
-    ("11kv Shackle H/W", "Set."),
-    ("Earthing Plate/Coil", "Nos"),
-    ("G.I. Wire 8 No.", "Kg"),
-    ("Stay Wire 7/12", "Kg"),
-    ("Stay Clamp Pair", "Pair"),
-    ("Turn Buckle", "Nos"),
-    ("Eye Bolt", "Nos"),
-    ("Stay Insulator", "Nos"),
-    ("Anchor Road", "Nos"),
-    ("C.C. Block", "Nos"),
-    ("Angle 9' Fut(65*65*6)", "Fut"),
-    ("Angle 9' Fut(50*50*6)", "Fut"),
-    ("Angle 4' Fut", "Fut"),
-    ("Angle 2'.6'' Fut", "Fut"),
-    ("11kv D.O Angle / Fuse", "Nos"),
-    ("U CLAIMP", "Nos"),
-    ("LT SHACKLE", "Nos"),
-    ("PVC PIPE", "Nos"),
-    ("L.A ", "Nos"),
-    ("MS Chanal-6 fut", "Nos"),
-    ("Bolt-2.6\"(with nut)", "Nos"),
-    ("Bolt-5.0\"(with nut)", "Nos"),
-    ("Bolt-7.0\"(with nut)", "Nos"),
-    ("Bolt-11.0\"(with nut)", "Nos")
+    ("Conducto 34mm 2wire", "Mtr", "0102000031"),
+    ("Conductor 34mm 5wire", "Mtr", "0102000031"),
+    ("PSC Pole 8 MTR", "Nos", "2611000003"),
+    ("PSC Pole 10 MTR", "Nos", "2611000010"),
+    ("Three Hole Parties", "Nos", None),
+    ("V-x arm", "Nos", "2609000034"),
+    ("Top Fitting", "Nos", "2601000084"),
+    ("Side Clamp", "Nos", "2601000049"),
+    ("Earthing Plate/Coil", "Nos", "0901000024"),
+    ("G.I. Wire 8 No.", "Kg", "0103000002"),
+    ("Stay Wire 7/12", "Kg", "0103000014"),
+    ("Stay Clamp Pair", "Pair", "2601000069"),
+    ("Turn Buckle", "Nos", "2614000009"),
+    ("Eye Bolt", "Nos", "2614000012"),
+    ("Stay Insulator", "Nos", "2003000001"),
+    ("Anchor Road", "Nos", "2614000002"),
+    ("C.C. Block", "Nos", "2614000013"),
+    ("U CLAIMP", "Nos", "2601000040"),
+    ("LT SHACKLE", "Nos", "2002000001"),
+    ("PVC PIPE", "Nos", "2801000016"),
+    ("Bolt-2.6\"(with nut)", "Nos", "2010000002"),
+    ("Bolt-5.0\"(with nut)", "Nos", "2010000002"),
+    ("Bolt-7.0\"(with nut)", "Nos", "2010000002"),
+    ("Bolt-11.0\"(with nut)", "Nos", "2010000002"),
+    
+    # Other items
+    ("Conductor 34mm  4wire", "Mtr", "0102000031"),
+    ("Conductor 55 mm 3wire", "Mtr", "0102000033"),
+    ("Transformer 10 KVA", "Nos", None),
+    ("Transformer 25 KVA", "Nos", None),
+    ("Transformer 63 KVA", "Nos", None),
+    ("11kv Comp Pin Insulator", "Nos", "2001000010"),
+    ("11kv Pin Insulator", "Nos", "2001000010"),
+    ("11kv G.I. Pin", "Nos", "2010000010"),
+    ("11kv Shackle Insulator", "Nos", "2006000006"),
+    ("11kv Shackle H/W", "Set.", "2010000077"),
+    ("Angle 9' Fut(65*65*6)", "Fut", None),
+    ("Angle 9' Fut(50*50*6)", "Fut", None),
+    ("Angle 4' Fut", "Fut", None),
+    ("Angle 2'.6'' Fut", "Fut", None),
+    ("11kv D.O Angle / Fuse", "Nos", None),
+    ("L.A ", "Nos", None),
+    ("MS Chanal-6 fut", "Nos", None),
+]
+
+SEED_MAPPINGS = [
+    ('u clamp', '2601000040'),
+    ('c clamp', '2601000040'),
+    ('u claimp', '2601000040'),
+    ('lt shackle', '2002000001'),
+    ('shackle insulator', '2002000001'),
+    ('440v lt shackle', '2002000001'),
+    ('440 v lt shackle', '2002000001'),
+    ('earthing coil', '0901000024'),
+    ('gi earthing coil', '0901000024'),
+    ('earthing plate/coil', '0901000024'),
+    ('pvc pipe', '2801000016'),
+    ('hd rigid pvc', '2801000016'),
+    ('h d rigid pvc', '2801000016'),
+    ('wire 8', '0103000002'),
+    ('wire no.8', '0103000002'),
+    ('wire no. 8', '0103000002'),
+    ('gi wire 8', '0103000002'),
+    ('gi wire no.8', '0103000002'),
+    ('gi wire no. 8', '0103000002'),
+    ('conductor 34', '0102000031'),
+    ('conducto 34', '0102000031'),
+    ('weasel', '0102000031'),
+    ('alloy conductor 34', '0102000031'),
+    ('aluminium alloy conductor 34', '0102000031'),
+    ('stay clamp', '2601000069'),
+    ('stay clamp pair', '2601000069'),
+    ('anchor rod', '2614000002'),
+    ('anchor road', '2614000002'),
+    ('turn buckle', '2614000009'),
+    ('eye bolt', '2614000012'),
+    ('guy insulator', '2003000001'),
+    ('stay insulator', '2003000001'),
+    ('stay insulator ht', '2003000001'),
+    ('pole 8', '2611000003'),
+    ('pole-8', '2611000003'),
+    ('psc pole 8', '2611000003'),
+    ('psc pole-8', '2611000003'),
+    ('pole 10', '2611000010'),
+    ('pole-10', '2611000010'),
+    ('psc pole 10', '2611000010'),
+    ('psc pole-10', '2611000010'),
+    ('earthing plate', '0901000007'),
+    ('wire 10', '0103000003'),
+    ('wire no.10', '0103000003'),
+    ('wire no. 10', '0103000003'),
+    ('gi wire 10', '0103000003'),
+    ('gi wire no.10', '0103000003'),
+    ('gi wire no. 10', '0103000003'),
+    ('cc block', '2614000013'),
+    ('c.c.block', '2614000013'),
+    ('block', '2614000013'),
+    ('stay wire 7/12', '0103000014'),
+    ('stay wire', '0103000014'),
+    ('conductor 55', '0102000033'),
+    ('conducto 55', '0102000033'),
+    ('alloy conductor 55', '0102000033'),
+    ('side clamp', '2601000049'),
+    ('v-cross', '2609000034'),
+    ('v cross', '2609000034'),
+    ('vcross', '2609000034'),
+    ('top fitting', '2601000084'),
+    ('comp pin insulator', '2001000010'),
+    ('pin insulator', '2001000010'),
+    ('gi pin', '2010000010'),
+    ('g.i.pin', '2010000010'),
+    ('11kv shackle insulator', '2006000006'),
+    ('11kv shackle hard ware', '2010000077'),
+    ('11kv shackle h/w', '2010000077'),
+    ('shackle hard ware', '2010000077'),
+    ('shackle h/w', '2010000077'),
+    ('bolts + nuts', '2010000002'),
+    ('bolts & nuts', '2010000002'),
+    ('gi bolts', '2010000002'),
+    ('g.i. bolts', '2010000002'),
+    ('bolt-2.6', '2010000002'),
+    ('bolt-5.0', '2010000002'),
+    ('bolt-7.0', '2010000002'),
+    ('bolt-11.0', '2010000002'),
 ]
 
 def seed_materials():
-    """Seeds typical material items into central inventory database."""
+    """Seeds typical material items and alias mappings into the database."""
     try:
-        for name, unit in COMMON_MATERIALS:
+        # Seed Materials
+        for name, unit, code in COMMON_MATERIALS:
             m = Material.query.filter_by(name=name).first()
             if not m:
-                # Add default material with 0.0 opening stock so actual stock represents user additions
-                new_m = Material(name=name, unit=unit, opening_stock=0.0)
+                new_m = Material(name=name, unit=unit, opening_stock=0.0, item_code=code)
                 db.session.add(new_m)
+            else:
+                if code and not m.item_code:
+                    m.item_code = code
+        db.session.commit()
+        
+        # Seed Mappings
+        from models import MaterialMapping
+        for alias, item_code in SEED_MAPPINGS:
+            existing = MaterialMapping.query.filter_by(alias=alias).first()
+            if not existing:
+                new_map = MaterialMapping(alias=alias, item_code=item_code)
+                db.session.add(new_map)
         db.session.commit()
     except Exception as e:
-        print(f"Error seeding materials: {e}")
+        print(f"Error seeding materials/mappings: {e}")
         db.session.rollback()
 
 def migrate_database():
@@ -152,19 +270,65 @@ def migrate_database():
             with db.engine.begin() as conn:
                 conn.execute(text("ALTER TABLE release_orders ADD COLUMN status VARCHAR(50) DEFAULT 'Pending'"))
 
-        # Check users table for role
+        # Check users table for role, full_name, and profile_pic
         columns = [c['name'] for c in inspector.get_columns('users')]
         if 'role' not in columns:
             with db.engine.begin() as conn:
                 conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'manager'"))
+        if 'full_name' not in columns:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN full_name VARCHAR(100)"))
+        if 'profile_pic' not in columns:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE users ADD COLUMN profile_pic VARCHAR(255)"))
 
-        # Check farmer_materials table for pole_no
+        # Check farmer_materials table for pole_no and item_code
         columns = [c['name'] for c in inspector.get_columns('farmer_materials')]
         if 'pole_no' not in columns:
             with db.engine.begin() as conn:
                 conn.execute(text("ALTER TABLE farmer_materials ADD COLUMN pole_no VARCHAR(50)"))
+        if 'item_code' not in columns:
+            with db.engine.begin() as conn:
+                conn.execute(text("ALTER TABLE farmer_materials ADD COLUMN item_code VARCHAR(50)"))
     except Exception as e:
         print(f"Migration error: {e}")
+
+
+def resolve_item_code_from_name(name):
+    """Resolves standard UGVCL material name variation to its 10-digit item_code using DB mapping."""
+    if not name:
+        return None
+    name_lower = name.lower().strip()
+    
+    try:
+        from models import MaterialMapping
+        # Match exactly first
+        mapping = MaterialMapping.query.filter_by(alias=name_lower).first()
+        if mapping:
+            return mapping.item_code
+            
+        # Match substring (if alias is contained in the material name)
+        # Sort by length desc so longer matches (more specific) take precedence
+        mappings = MaterialMapping.query.all()
+        sorted_mappings = sorted(mappings, key=lambda x: len(x.alias), reverse=True)
+        for m in sorted_mappings:
+            if m.alias in name_lower:
+                return m.item_code
+    except Exception as e:
+        print(f"Error resolving item code from DB: {e}")
+        
+    return None
+
+def find_material_by_code_or_name(item_code, name):
+    """Find a Material by item_code first, then fallback to name."""
+    if not item_code and name:
+        item_code = resolve_item_code_from_name(name)
+        
+    if item_code:
+        m = Material.query.filter_by(item_code=item_code).first()
+        if m:
+            return m
+    return Material.query.filter_by(name=name).first()
 
 
 # --- ROUTES ---
@@ -194,6 +358,79 @@ def logout():
     logout_user()
     flash('Logged out successfully.', 'info')
     return redirect(url_for('login'))
+
+@app.route('/profile')
+@login_required
+def profile():
+    return render_template('profile.html')
+
+@app.route('/profile/update', methods=['POST'])
+@login_required
+def update_profile():
+    full_name = request.form.get('full_name', '').strip()
+    if not full_name:
+        flash('Full Name is required.', 'danger')
+        return redirect(url_for('profile'))
+        
+    current_user.full_name = full_name
+    
+    # Handle Profile Picture upload
+    if 'profile_pic' in request.files:
+        file = request.files['profile_pic']
+        if file and file.filename != '':
+            # Validate extension
+            ext = os.path.splitext(file.filename)[1].lower()
+            if ext in ['.png', '.jpg', '.jpeg', '.gif']:
+                # Save file
+                filename = f"user_{current_user.id}_{int(time.time())}{ext}"
+                upload_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'profile_pics')
+                os.makedirs(upload_dir, exist_ok=True)
+                file_path = os.path.join(upload_dir, filename)
+                file.save(file_path)
+                
+                # Save relative path to DB
+                current_user.profile_pic = f"/static/uploads/profile_pics/{filename}"
+            else:
+                flash('Unsupported image format. Please upload JPG, PNG, or GIF.', 'danger')
+                return redirect(url_for('profile'))
+                
+    try:
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Database error: {str(e)}', 'danger')
+        
+    return redirect(url_for('profile'))
+
+@app.route('/profile/update-password', methods=['POST'])
+@login_required
+def update_password():
+    current_pass = request.form.get('current_password')
+    new_pass = request.form.get('new_password')
+    confirm_pass = request.form.get('confirm_password')
+    
+    if not check_password_hash(current_user.password_hash, current_pass):
+        flash('Incorrect current password.', 'danger')
+        return redirect(url_for('profile'))
+        
+    if not new_pass or len(new_pass) < 6:
+        flash('New password must be at least 6 characters long.', 'danger')
+        return redirect(url_for('profile'))
+        
+    if new_pass != confirm_pass:
+        flash('New passwords do not match.', 'danger')
+        return redirect(url_for('profile'))
+        
+    current_user.password_hash = generate_password_hash(new_pass)
+    try:
+        db.session.commit()
+        flash('Password updated successfully.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Database error: {str(e)}', 'danger')
+        
+    return redirect(url_for('profile'))
 
 @app.route('/')
 def dashboard():
@@ -439,7 +676,7 @@ def work_order_view(wo_id):
         flash(f"Error loading Work Order: {str(e)}", "danger")
         return redirect(url_for('work_orders_list'))
 
-@app.route('/work-orders/delete/<int:wo_id>', methods=['GET', 'POST'])
+@app.route('/work-orders/delete/<int:wo_id>', methods=['POST'])
 @admin_required
 def work_orders_delete(wo_id):
     wo = WorkOrder.query.get_or_404(wo_id)
@@ -536,24 +773,16 @@ def add_release_order():
                     for mat_item in materials_data:
                         m_name = mat_item.get('material_name')
                         qty = Decimal(str(mat_item.get('qty', '0.0')))
+                        item_code = mat_item.get('item_code')
                         
                         if qty > 0:
-                            m = Material.query.filter_by(name=m_name).first()
-                            if not m:
-                                unit = 'Nos'
-                                if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                                    unit = 'Mtr'
-                                elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                                    unit = 'Kg'
-                                m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                                db.session.add(m)
-                                db.session.flush()
+                            m = find_material_by_code_or_name(item_code, m_name)
                             
                             # Sub-work order materials list is NOT a material receipt, do not increment received_qty
                             
                             item = MaterialReceiptItem(
                                 receipt_id=receipt.id,
-                                material_name=m_name,
+                                material_name=m.name if m else m_name,
                                 qty=qty,
                                 rate=0.0
                             )
@@ -576,6 +805,7 @@ def add_release_order():
                     lt4 = Decimal(str(fd.get('lt4', '0.0')))
                     lt2 = Decimal(str(fd.get('lt2', '0.0')))
                     tc = int(fd.get('tc', 0))
+                    ex = Decimal(str(fd.get('ex', '0.0')))
                     
                     farmer = Farmer(
                         release_order_id=ro.id,
@@ -587,6 +817,7 @@ def add_release_order():
                         lt4=lt4,
                         lt2=lt2,
                         tc=tc,
+                        ex=ex,
                         status='Pending',
                         po_no=ro.po_no,
                         release_no=ro.release_no
@@ -594,45 +825,18 @@ def add_release_order():
                     db.session.add(farmer)
                     db.session.flush()
                     
-                    # Compute materials
+                    # Get any explicitly provided materials (no auto-estimation)
                     materials = fd.get('materials', {})
-                    if not materials:
-                        ht_f = float(ht)
-                        lt4_f = float(lt4)
-                        lt2_f = float(lt2)
-                        if lt2_f > 0:
-                            materials['Conducto 34mm 2wire'] = lt2_f * 1000.0
-                            materials['PSC Pole 8 MTR'] = max(1.0, float(int(lt2_f * 1000.0 / 40.0)))
-                        if lt4_f > 0:
-                            materials['Conductor 34mm  4wire'] = lt4_f * 1000.0
-                            materials['PSC Pole 8 MTR'] = materials.get('PSC Pole 8 MTR', 0.0) + max(1.0, float(int(lt4_f * 1000.0 / 40.0)))
-                        if ht_f > 0:
-                            materials['Conductor 55 mm 3wire'] = ht_f * 1000.0
-                            materials['PSC Pole 10 MTR'] = max(1.0, float(int(ht_f * 1000.0 / 50.0)))
-                        if tc > 0:
-                            if tc == 10: materials['Transformer 10 KVA'] = 1
-                            elif tc == 16: materials['Transformer 16 KVA'] = 1
-                            elif tc == 25: materials['Transformer 25 KVA'] = 1
-                            elif tc == 63: materials['Transformer 63 KVA'] = 1
-                            else: materials['Transformer 25 KVA'] = 1
-                            materials['PSC Pole 10 MTR'] = materials.get('PSC Pole 10 MTR', 0.0) + 2
                     
                     for m_name, qty_val in materials.items():
                         qty = Decimal(str(qty_val))
-                        m = Material.query.filter_by(name=m_name).first()
-                        if not m:
-                            unit = 'Nos'
-                            if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                                unit = 'Mtr'
-                            elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                                unit = 'Kg'
-                            m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                            db.session.add(m)
-                            db.session.flush()
-                            
+                        resolved_code = resolve_item_code_from_name(m_name)
+                        m = find_material_by_code_or_name(resolved_code, m_name)
+                        
                         fm = FarmerMaterial(
                             farmer_id=farmer.id,
-                            material_name=m_name,
+                            material_name=m.name if m else m_name,
+                            item_code=m.item_code if m else resolved_code,
                             qty_required=qty,
                             qty_issued=0.0,
                             qty_consumed=0.0
@@ -763,24 +967,16 @@ def save_release_order_ocr():
                 for mat_item in materials_data:
                     m_name = mat_item.get('material_name')
                     qty = Decimal(str(mat_item.get('qty', '0.0')))
+                    item_code = mat_item.get('item_code')
                     
                     if qty > 0:
-                        m = Material.query.filter_by(name=m_name).first()
-                        if not m:
-                            unit = 'Nos'
-                            if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                                unit = 'Mtr'
-                            elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                                unit = 'Kg'
-                            m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                            db.session.add(m)
-                            db.session.flush()
+                        m = find_material_by_code_or_name(item_code, m_name)
                         
                         # Sub-work order materials list is NOT a material receipt, do not increment received_qty
                         
                         item = MaterialReceiptItem(
                             receipt_id=receipt.id,
-                            material_name=m_name,
+                            material_name=m.name if m else m_name,
                             qty=qty,
                             rate=0.0
                         )
@@ -803,6 +999,7 @@ def save_release_order_ocr():
                 lt4 = Decimal(str(fd.get('lt4', '0.0')))
                 lt2 = Decimal(str(fd.get('lt2', '0.0')))
                 tc = int(fd.get('tc', 0))
+                ex = Decimal(str(fd.get('ex', '0.0')))
                 
                 farmer = Farmer(
                     release_order_id=ro.id,
@@ -814,6 +1011,7 @@ def save_release_order_ocr():
                     lt4=lt4,
                     lt2=lt2,
                     tc=tc,
+                    ex=ex,
                     status='Pending',
                     po_no=ro.po_no,
                     release_no=ro.release_no
@@ -821,46 +1019,18 @@ def save_release_order_ocr():
                 db.session.add(farmer)
                 db.session.flush()
                 
-                # Fetch materials map
+                # Get any explicitly provided materials (no auto-estimation)
                 materials = fd.get('materials', {})
-                if not materials:
-                    # Compute materials if empty
-                    ht_f = float(ht)
-                    lt4_f = float(lt4)
-                    lt2_f = float(lt2)
-                    if lt2_f > 0:
-                        materials['Conducto 34mm 2wire'] = lt2_f * 1000.0
-                        materials['PSC Pole 8 MTR'] = max(1.0, float(int(lt2_f * 1000.0 / 40.0)))
-                    if lt4_f > 0:
-                        materials['Conductor 34mm  4wire'] = lt4_f * 1000.0
-                        materials['PSC Pole 8 MTR'] = materials.get('PSC Pole 8 MTR', 0.0) + max(1.0, float(int(lt4_f * 1000.0 / 40.0)))
-                    if ht_f > 0:
-                        materials['Conductor 55 mm 3wire'] = ht_f * 1000.0
-                        materials['PSC Pole 10 MTR'] = max(1.0, float(int(ht_f * 1000.0 / 50.0)))
-                    if tc > 0:
-                        if tc == 10: materials['Transformer 10 KVA'] = 1
-                        elif tc == 16: materials['Transformer 16 KVA'] = 1
-                        elif tc == 25: materials['Transformer 25 KVA'] = 1
-                        elif tc == 63: materials['Transformer 63 KVA'] = 1
-                        else: materials['Transformer 25 KVA'] = 1
-                        materials['PSC Pole 10 MTR'] = materials.get('PSC Pole 10 MTR', 0.0) + 2
                 
                 for m_name, qty_val in materials.items():
                     qty = Decimal(str(qty_val))
-                    m = Material.query.filter_by(name=m_name).first()
-                    if not m:
-                        unit = 'Nos'
-                        if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                            unit = 'Mtr'
-                        elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                            unit = 'Kg'
-                        m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                        db.session.add(m)
-                        db.session.flush()
-                        
+                    resolved_code = resolve_item_code_from_name(m_name)
+                    m = find_material_by_code_or_name(resolved_code, m_name)
+                    
                     fm = FarmerMaterial(
                         farmer_id=farmer.id,
-                        material_name=m_name,
+                        material_name=m.name if m else m_name,
+                        item_code=m.item_code if m else resolved_code,
                         qty_required=qty,
                         qty_issued=0.0,
                         qty_consumed=0.0
@@ -911,39 +1081,11 @@ def upload_farmer_list():
         db.session.add(vault_doc)
         db.session.commit()
         
-        # Format/compute default materials for each farmer based on line dimensions
+        # No auto-estimation of materials from HT/LT/TC values
+        # Users will manually enter consumption values
         for f in parsed_farmers:
-            ht = float(f.get('ht', 0.0))
-            lt4 = float(f.get('lt4', 0.0))
-            lt2 = float(f.get('lt2', 0.0))
-            tc = int(f.get('tc', 0))
-            
-            materials = {}
-            if lt2 > 0:
-                materials['Conducto 34mm 2wire'] = lt2 * 1000.0
-                materials['PSC Pole 8 MTR'] = max(1, int(lt2 * 1000.0 / 40.0))
-            if lt4 > 0:
-                materials['Conductor 34mm  4wire'] = lt4 * 1000.0
-                materials['PSC Pole 8 MTR'] = materials.get('PSC Pole 8 MTR', 0.0) + max(1, int(lt4 * 1000.0 / 40.0))
-            if ht > 0:
-                materials['Conductor 55 mm 3wire'] = ht * 1000.0
-                materials['PSC Pole 10 MTR'] = max(1, int(ht * 1000.0 / 50.0))
-            if tc > 0:
-                # Map KVA to standard transformer names
-                if tc == 10:
-                    materials['Transformer 10 KVA'] = 1
-                elif tc == 16:
-                    materials['Transformer 16 KVA'] = 1
-                elif tc == 25:
-                    materials['Transformer 25 KVA'] = 1
-                elif tc == 63:
-                    materials['Transformer 63 KVA'] = 1
-                else:
-                    materials['Transformer 25 KVA'] = 1
-                    
-                materials['PSC Pole 10 MTR'] = materials.get('PSC Pole 10 MTR', 0.0) + 2
-                
-            f['materials'] = materials
+            f['materials'] = {}
+
             
         return jsonify({
             'success': True,
@@ -984,6 +1126,7 @@ def save_farmer_list_ocr():
             lt4 = Decimal(str(fd.get('lt4', '0.0')))
             lt2 = Decimal(str(fd.get('lt2', '0.0')))
             tc = int(fd.get('tc', 0))
+            ex = Decimal(str(fd.get('ex', '0.0')))
             
             # Create Farmer record
             farmer = Farmer(
@@ -996,6 +1139,7 @@ def save_farmer_list_ocr():
                 lt4=lt4,
                 lt2=lt2,
                 tc=tc,
+                ex=ex,
                 status='Pending',
                 po_no=ro.po_no,
                 release_no=ro.release_no
@@ -1011,21 +1155,14 @@ def save_farmer_list_ocr():
                     p_materials = pole_d.get('materials', {})
                     for m_name, qty_val in p_materials.items():
                         qty = Decimal(str(qty_val))
-                        m = Material.query.filter_by(name=m_name).first()
-                        if not m:
-                            unit = 'Nos'
-                            if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                                unit = 'Mtr'
-                            elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                                unit = 'Kg'
-                            m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                            db.session.add(m)
-                            db.session.flush()
+                        resolved_code = resolve_item_code_from_name(m_name)
+                        m = find_material_by_code_or_name(resolved_code, m_name)
                         
                         fm = FarmerMaterial(
                             farmer_id=farmer.id,
                             pole_no=pole_no,
-                            material_name=m_name,
+                            material_name=m.name if m else m_name,
+                            item_code=m.item_code if m else resolved_code,
                             qty_required=qty,
                             qty_issued=0.0,
                             qty_consumed=0.0
@@ -1035,21 +1172,14 @@ def save_farmer_list_ocr():
                 materials = fd.get('materials', {})
                 for m_name, qty_val in materials.items():
                     qty = Decimal(str(qty_val))
-                    m = Material.query.filter_by(name=m_name).first()
-                    if not m:
-                        unit = 'Nos'
-                        if 'wire' in m_name.lower() or 'conductor' in m_name.lower():
-                            unit = 'Mtr'
-                        elif 'wire' in m_name.lower() or 'wire' in m_name.lower():
-                            unit = 'Kg'
-                        m = Material(name=m_name, unit=unit, opening_stock=0.0)
-                        db.session.add(m)
-                        db.session.flush()
+                    resolved_code = resolve_item_code_from_name(m_name)
+                    m = find_material_by_code_or_name(resolved_code, m_name)
                     
                     fm = FarmerMaterial(
                         farmer_id=farmer.id,
                         pole_no=None,
-                        material_name=m_name,
+                        material_name=m.name if m else m_name,
+                        item_code=m.item_code if m else resolved_code,
                         qty_required=qty,
                         qty_issued=0.0,
                         qty_consumed=0.0
@@ -1177,23 +1307,21 @@ def inventory_update_price():
 @app.route('/inventory/lookup-gate-pass/<mr_number>', methods=['GET'])
 @admin_required
 def inventory_lookup_gate_pass(mr_number):
-    from ocr_parser import PRE_VERIFIED_GATE_PASSES, normalize_mr_number
-    import copy
+    from ocr_parser import normalize_mr_number
     
     normalized = normalize_mr_number(mr_number)
     already_exists = MaterialReceipt.query.filter_by(receipt_no=normalized).first() is not None
+    materials = Material.query.all()
+    mat_list = [{'id': m.id, 'name': m.name, 'unit': m.unit, 'unit_price': float(m.unit_price)} for m in materials]
     
-    if normalized in PRE_VERIFIED_GATE_PASSES:
-        data = copy.deepcopy(PRE_VERIFIED_GATE_PASSES[normalized])
-        # Fetch materials for mapping dropdown
-        materials = Material.query.all()
-        mat_list = [{'id': m.id, 'name': m.name, 'unit': m.unit, 'unit_price': float(m.unit_price)} for m in materials]
-        data['all_materials'] = mat_list
-        data['success'] = True
-        data['already_exists'] = already_exists
-        return jsonify(data)
-    
-    return jsonify({'success': False, 'message': f'No pre-verified gate pass found for MR #{mr_number}', 'already_exists': already_exists})
+    return jsonify({
+        'success': True,
+        'mr_number': normalized,
+        'items': [],
+        'all_materials': mat_list,
+        'already_exists': already_exists
+    })
+
 
 @app.route('/inventory/material-history/<path:material_name>', methods=['GET'])
 @admin_required
@@ -1494,13 +1622,15 @@ def inventory_save_debit():
             mat_name = it.get('material_name')
             qty = Decimal(str(it.get('qty', '0')))
             
-            m = Material.query.filter_by(name=mat_name).first()
+            resolved_code = resolve_item_code_from_name(mat_name)
+            m = find_material_by_code_or_name(resolved_code, mat_name)
             if m:
                 m.issued_qty += qty
                 
                 fm = FarmerMaterial(
                     farmer_id=farmer.id,
-                    material_name=mat_name,
+                    material_name=m.name,
+                    item_code=m.item_code,
                     qty_required=qty,
                     qty_issued=qty,
                     qty_consumed=0.0
@@ -1514,14 +1644,14 @@ def inventory_save_debit():
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)})
 
-@app.route('/inventory/debit/delete/<int:farmer_id>')
+@app.route('/inventory/debit/delete/<int:farmer_id>', methods=['POST'])
 @admin_required
 def debit_delete(farmer_id):
     from models import Farmer
     farmer = Farmer.query.get_or_404(farmer_id)
     try:
         for fm in farmer.materials:
-            m = Material.query.filter_by(name=fm.material_name).first()
+            m = find_material_by_code_or_name(fm.item_code, fm.material_name)
             if m:
                 m.issued_qty = max(0, m.issued_qty - fm.qty_issued)
         db.session.delete(farmer)
@@ -1612,7 +1742,7 @@ def inventory_credit_history():
 
 # ===================== DELETE HANDLERS =====================
 
-@app.route('/inventory/receipt/delete/<int:receipt_id>')
+@app.route('/inventory/receipt/delete/<int:receipt_id>', methods=['POST'])
 @admin_required
 def receipt_delete(receipt_id):
     receipt = MaterialReceipt.query.get_or_404(receipt_id)
@@ -1630,7 +1760,7 @@ def receipt_delete(receipt_id):
         flash(f'Error deleting Material Receipt: {e}', 'danger')
     return redirect(url_for('inventory'))
 
-@app.route('/work-orders/release-order/delete/<int:ro_id>', methods=['POST', 'GET'])
+@app.route('/work-orders/release-order/delete/<int:ro_id>', methods=['POST'])
 @admin_required
 def delete_release_order(ro_id):
     from models import MaterialReceiptItem, Farmer, FarmerMaterial, Bill
@@ -1683,7 +1813,7 @@ def delete_release_order(ro_id):
     return redirect(url_for('work_order_details', wo_id=work_order_id))
 
 
-@app.route('/inventory/credit/delete/<int:credit_id>')
+@app.route('/inventory/credit/delete/<int:credit_id>', methods=['POST'])
 @admin_required
 def credit_delete(credit_id):
     cr = CreditReceipt.query.get_or_404(credit_id)
@@ -1805,49 +1935,130 @@ def manager_update_status(ro_id):
             return redirect(url_for('manager_sub_order_detail', ro_id=ro.id))
     return redirect(url_for('manager_dashboard'))
 
-@app.route('/manager/sub-order/<int:ro_id>')
-@login_required
-def manager_sub_order_detail(ro_id):
+def material_sort_key(name):
+    """Sorts material names according to the specific sequence in UGVCL Material Account Sheet."""
+    if not name:
+        return 9999
+    name_clean = name.lower().strip()
+    
+    # Custom sequence
+    sequence = [
+        "conducto 34mm 2wire",
+        "conductor 34mm 5wire",
+        "psc pole 8 mtr",
+        "psc pole 10 mtr",
+        "three hole parties",
+        "v-x arm",
+        "top fitting",
+        "side clamp",
+        "earthing plate/coil",
+        "g.i. wire 8 no.",
+        "stay wire 7/12",
+        "stay clamp pair",
+        "turn buckle",
+        "eye bolt",
+        "stay insulator",
+        "anchor road",
+        "c.c. block",
+        "u claimp",
+        "lt shackle",
+        "pvc pipe",
+        "bolt-2.6\"(with nut)",
+        "bolt-5.0\"(with nut)",
+        "bolt-7.0\"(with nut)",
+        "bolt-11.0\"(with nut)"
+    ]
+    
+    for idx, seq_name in enumerate(sequence):
+        if seq_name in name_clean or name_clean in seq_name:
+            return idx
+            
+    return len(sequence) + ord(name[0].lower())
+
+def standardize_release_order_records(ro_id):
+    """Standardizes FarmerMaterial and MaterialReceiptItem names for a specific Release Order to match standard inventory names."""
+    try:
+        from models import FarmerMaterial, MaterialReceiptItem, Material, Farmer, ReleaseOrder
+        ro = ReleaseOrder.query.get(ro_id)
+        if not ro:
+            return
+            
+        # 1. Standardize FarmerMaterials for all farmers in this RO
+        farmers = ro.farmers
+        farmer_ids = [f.id for f in farmers]
+        if farmer_ids:
+            fms = FarmerMaterial.query.filter(FarmerMaterial.farmer_id.in_(farmer_ids)).all()
+            changed_any = False
+            for fm in fms:
+                code = fm.item_code
+                if not code:
+                    code = resolve_item_code_from_name(fm.material_name)
+                if code:
+                    m = Material.query.filter_by(item_code=code).first()
+                    if m:
+                        if fm.material_name != m.name:
+                            fm.material_name = m.name
+                            changed_any = True
+                        if fm.item_code != m.item_code:
+                            fm.item_code = m.item_code
+                            changed_any = True
+            if changed_any:
+                db.session.commit()
+                
+        # 2. Standardize MaterialReceiptItems for this RO's receipts
+        receipt_ids = [r.id for r in ro.receipts]
+        if receipt_ids:
+            items = MaterialReceiptItem.query.filter(MaterialReceiptItem.receipt_id.in_(receipt_ids)).all()
+            changed_any = False
+            for item in items:
+                code = resolve_item_code_from_name(item.material_name)
+                if code:
+                    m = Material.query.filter_by(item_code=code).first()
+                    if m and item.material_name != m.name:
+                        item.material_name = m.name
+                        changed_any = True
+            if changed_any:
+                db.session.commit()
+    except Exception as e:
+        print(f"Error standardizing RO {ro_id} records: {e}")
+        db.session.rollback()
+
+def get_sub_order_context(ro_id):
     from models import ReleaseOrder, Farmer, FarmerMaterial, Material
     from decimal import Decimal
+    
+    # Self-heal and standardize all material names first to match central inventory by item code
+    standardize_release_order_records(ro_id)
     
     ro = ReleaseOrder.query.get_or_404(ro_id)
     wo = ro.work_order
     
-    # Auto-derive RO status
     derived = derive_ro_status(ro)
     if ro.status != derived:
         ro.status = derived
         db.session.commit()
     
-    # 1. Collect all farmers for this RO
     farmers = ro.farmers
     
-    # 2. Extract union of all materials associated with this RO
     material_names = set()
-    for receipt in ro.receipts:
-        for item in receipt.items:
-            material_names.add(item.material_name)
-    for f in farmers:
-        for fm in f.materials:
-            material_names.add(fm.material_name)
+    all_m = Material.query.all()
+    for m in all_m:
+        if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 or m.consumed_qty > 0:
+            material_names.add(m.name)
             
-    material_list = sorted(list(material_names))
+    material_list = sorted(list(material_names), key=material_sort_key)
     
-    # Get units for all materials
     material_units = {}
     for name in material_list:
         m = Material.query.filter_by(name=name).first()
         material_units[name] = m.unit if m else 'Nos'
         
-    # 3. Create required and consumption maps per farmer and per pole
-    required_map = {} # required_map[farmer_id][material_name] -> total required
-    required_pole_map = {} # required_pole_map[farmer_id][pole_no][material_name] -> quantity required
-    consumption_map = {} # consumption_map[farmer_id][pole_no][material_name] -> quantity consumed
-    farmer_poles = {} # farmer_poles[farmer_id] -> list of pole numbers
+    required_map = {}
+    required_pole_map = {}
+    consumption_map = {}
+    farmer_poles = {}
     
     for f in farmers:
-        # Load total required quantities (regardless of pole_no)
         required_map[f.id] = {}
         for m_name in material_list:
             from sqlalchemy import func
@@ -1856,13 +2067,11 @@ def manager_sub_order_detail(ro_id):
             ).scalar() or Decimal('0.0')
             required_map[f.id][m_name] = req_sum
             
-        # Get list of unique poles for this farmer
         poles_query = db.session.query(FarmerMaterial.pole_no).filter(
             FarmerMaterial.farmer_id == f.id,
             FarmerMaterial.pole_no.isnot(None)
         ).distinct().all()
         
-        # Custom sorting logic for pole numbers (e.g. 1, 2, 10...)
         def pole_sort_key(p):
             try:
                 num = re.search(r'\d+', p)
@@ -1870,7 +2079,6 @@ def manager_sub_order_detail(ro_id):
             except:
                 return 9999
         poles = sorted(list(set([p[0] for p in poles_query if p[0]])), key=pole_sort_key)
-        
         if not poles:
             poles = ['1']
             
@@ -1888,38 +2096,134 @@ def manager_sub_order_detail(ro_id):
                     required_pole_map[f.id][p][m_name] = fm.qty_required
                     consumption_map[f.id][p][m_name] = fm.qty_consumed
                 else:
-                    # Fallback to aggregated requirement on the first pole
                     required_pole_map[f.id][p][m_name] = required_map[f.id][m_name] if p == poles[0] else Decimal('0.0')
                     consumption_map[f.id][p][m_name] = None
 
-    # Farmer status counts for summary
     status_counts = {}
     for f in farmers:
         status_counts[f.status] = status_counts.get(f.status, 0) + 1
         
-    # Get current stock for all materials in the list
     material_stocks = {}
     for name in material_list:
         m = Material.query.filter_by(name=name).first()
-        material_stocks[name] = float(m.current_stock) if m else 0.0
-                
-    return render_template(
-        'manager_detail.html',
-        ro=ro,
-        wo=wo,
-        farmers=farmers,
-        materials=material_list,
-        material_units=material_units,
-        required_map=required_map,
-        required_pole_map=required_pole_map,
-        consumption_map=consumption_map,
-        farmer_poles=farmer_poles,
-        material_stocks=material_stocks,
-        status_counts=status_counts,
-        float=float,
-        isinstance=isinstance,
-        Decimal=Decimal
-    )
+        if m:
+            current_ro_consumed = Decimal('0.0')
+            for farmer in farmers:
+                for fm in farmer.materials:
+                    if fm.material_name == name:
+                        current_ro_consumed += fm.qty_consumed or Decimal('0.0')
+            material_stocks[name] = float(m.current_stock + current_ro_consumed)
+        else:
+            material_stocks[name] = 0.0
+            
+    return {
+        'ro': ro, 'wo': wo, 'farmers': farmers, 'materials': material_list,
+        'material_units': material_units, 'required_map': required_map,
+        'required_pole_map': required_pole_map, 'consumption_map': consumption_map,
+        'farmer_poles': farmer_poles, 'material_stocks': material_stocks,
+        'status_counts': status_counts, 'float': float, 'isinstance': isinstance, 'Decimal': Decimal
+    }
+
+@app.route('/manager/farmer/<int:farmer_id>/taping', methods=['GET'])
+@login_required
+def manager_get_taping(farmer_id):
+    from models import Farmer, FarmerMaterial
+    farmer = Farmer.query.get_or_404(farmer_id)
+    fms = FarmerMaterial.query.filter_by(farmer_id=farmer_id, pole_no='EX').all()
+    materials = []
+    for fm in fms:
+        if fm.qty_consumed and fm.qty_consumed > 0:
+            materials.append({
+                'material_name': fm.material_name,
+                'qty_consumed': float(fm.qty_consumed)
+            })
+    return jsonify({
+        'taping_price': float(farmer.ex or 0.0),
+        'materials': materials
+    })
+
+@app.route('/manager/farmer/<int:farmer_id>/taping', methods=['POST'])
+@login_required
+def manager_save_taping(farmer_id):
+    from models import Farmer, FarmerMaterial, Material
+    from decimal import Decimal
+    
+    farmer = Farmer.query.get_or_404(farmer_id)
+    ro = farmer.release_order
+    if ro and ro.status == 'Completed':
+        flash("This Sub-Work Order is finalized and locked.", "danger")
+        return redirect(url_for('manager_active_farmers', ro_id=ro.id))
+        
+    taping_price_str = request.form.get('taping_price', '0.0').strip()
+    try:
+        taping_price = Decimal(taping_price_str) if taping_price_str else Decimal('0.0')
+    except:
+        taping_price = Decimal('0.0')
+        
+    farmer.ex = taping_price
+    
+    # 1. Clear old EX pole records for this farmer
+    FarmerMaterial.query.filter_by(farmer_id=farmer_id, pole_no='EX').delete()
+    
+    # 2. Add new ones
+    materials_data = request.form.getlist('materials[]')
+    qtys_data = request.form.getlist('qtys[]')
+    
+    for mat_name, qty_str in zip(materials_data, qtys_data):
+        if not mat_name or not qty_str:
+            continue
+        try:
+            qty = Decimal(qty_str)
+        except:
+            qty = Decimal('0.0')
+            
+        if qty > 0:
+            m = Material.query.filter_by(name=mat_name).first()
+            fm = FarmerMaterial(
+                farmer_id=farmer_id,
+                pole_no='EX',
+                material_name=mat_name,
+                item_code=m.item_code if m else resolve_item_code_from_name(mat_name),
+                qty_required=Decimal('0.0'),
+                qty_issued=Decimal('0.0'),
+                qty_consumed=qty
+            )
+            db.session.add(fm)
+            
+    # 3. Synchronize consumed quantities for central warehouse
+    db.session.flush()
+    all_materials = Material.query.all()
+    for m in all_materials:
+        if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 or m.consumed_qty > 0:
+            from sqlalchemy import func, or_
+            if m.item_code:
+                total_consumed = db.session.query(func.sum(FarmerMaterial.qty_consumed)).filter(
+                    or_(
+                        FarmerMaterial.item_code == m.item_code,
+                        FarmerMaterial.material_name == m.name
+                    )
+                ).scalar() or Decimal('0.0')
+            else:
+                total_consumed = db.session.query(func.sum(FarmerMaterial.qty_consumed)).filter(
+                    FarmerMaterial.material_name == m.name
+                ).scalar() or Decimal('0.0')
+            m.consumed_qty = Decimal(str(total_consumed))
+            
+    db.session.commit()
+    flash("Taping (EX) details updated successfully.", "success")
+    return redirect(url_for('manager_active_farmers', ro_id=ro.id))
+
+@app.route('/manager/sub-order/<int:ro_id>')
+@login_required
+def manager_sub_order_detail(ro_id):
+    ctx = get_sub_order_context(ro_id)
+    return render_template('manager_detail.html', **ctx)
+
+@app.route('/manager/sub-order/<int:ro_id>/active-farmers')
+@login_required
+def manager_active_farmers(ro_id):
+    ctx = get_sub_order_context(ro_id)
+    return render_template('manager_active_farmers.html', **ctx)
 
 @app.route('/manager/sub-order/<int:ro_id>/save', methods=['POST'])
 @login_required
@@ -1934,18 +2238,79 @@ def manager_save_consumption(ro_id):
         
     action = request.form.get('action') # 'draft' or 'submit'
     
-    # Extract unique materials for this RO
     farmers = ro.farmers
     material_names = set()
-    for receipt in ro.receipts:
-        for item in receipt.items:
-            material_names.add(item.material_name)
-    for f in farmers:
-        for fm in f.materials:
-            material_names.add(fm.material_name)
+    all_m = Material.query.all()
+    for m in all_m:
+        if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 or m.consumed_qty > 0:
+            material_names.add(m.name)
             
     material_list = list(material_names)
     
+    # Calculate available stock for each material including what's already consumed in this RO
+    available_stocks = {}
+    for m_name in material_list:
+        m = Material.query.filter_by(name=m_name).first()
+        if m:
+            current_ro_consumed = Decimal('0.0')
+            for farmer in farmers:
+                for fm in farmer.materials:
+                    if fm.material_name == m_name:
+                        current_ro_consumed += fm.qty_consumed or Decimal('0.0')
+            available_stocks[m_name] = m.current_stock + current_ro_consumed
+        else:
+            available_stocks[m_name] = Decimal('0.0')
+    
+    # 1. Parse all submitted values and calculate proposed new consumption per material
+    proposed_consumption = {} # m_name -> Decimal
+    for m_name in material_list:
+        proposed_consumption[m_name] = Decimal('0.0')
+
+    for f in farmers:
+        if f.status not in ['Active', 'Started']:
+            continue
+            
+        pole_keys = [k for k in request.form.keys() if k.startswith(f"pole_name_{f.id}_")]
+        submitted_poles = {}
+        for pk in pole_keys:
+            old_p = pk.replace(f"pole_name_{f.id}_", "")
+            new_p = request.form.get(pk, '').strip()
+            if new_p:
+                submitted_poles[old_p] = new_p
+                
+        if not submitted_poles:
+            submitted_poles['1'] = '1'
+            for m_name in material_list:
+                input_key_old = f"consumed_{f.id}_{m_name}"
+                input_key_new = f"consumed_{f.id}_1_{m_name}"
+                raw_val = request.form.get(input_key_old)
+                if raw_val is None:
+                    raw_val = request.form.get(input_key_new, '')
+                raw_val = raw_val.strip() if raw_val else ''
+                val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                proposed_consumption[m_name] += val
+        else:
+            for old_p, new_p in submitted_poles.items():
+                for m_name in material_list:
+                    input_key = f"consumed_{f.id}_{old_p}_{m_name}"
+                    raw_val = request.form.get(input_key, '').strip()
+                    val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                    proposed_consumption[m_name] += val
+
+    # 2. Validate proposed consumption against available stock
+    for m_name, proposed_val in proposed_consumption.items():
+        if proposed_val > 0:
+            m = Material.query.filter_by(name=m_name).first()
+            if not m:
+                flash(f"Material '{m_name}' does not exist in inventory.", "danger")
+                return redirect(url_for('manager_sub_order_detail', ro_id=ro.id))
+            
+            available_stock = available_stocks.get(m_name, Decimal('0.0'))
+            
+            if proposed_val > available_stock:
+                flash(f"Error: Insufficient stock for '{m_name}'. Available in warehouse: {float(available_stock)} {m.unit}, Requested: {float(proposed_val)} {m.unit}.", "danger")
+                return redirect(url_for('manager_sub_order_detail', ro_id=ro.id))
+                
     # Save consumption values — only for Active/Started farmers (skip Disputed/Pending)
     for f in farmers:
         if f.status not in ['Active', 'Started']:
@@ -1975,10 +2340,7 @@ def manager_save_consumption(ro_id):
                     raw_val = request.form.get(input_key_new, '')
                     
                 raw_val = raw_val.strip() if raw_val else ''
-                if not raw_val and m_name == 'PSC Pole 8 MTR':
-                    val = Decimal('1.0')
-                else:
-                    val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                val = Decimal(raw_val) if raw_val else Decimal('0.0')
                 
                 fm = FarmerMaterial.query.filter_by(farmer_id=f.id, material_name=m_name, pole_no='1').first()
                 if not fm:
@@ -1988,10 +2350,12 @@ def manager_save_consumption(ro_id):
                     fm.pole_no = '1'
                     fm.qty_consumed = val
                 else:
+                    m_obj = Material.query.filter_by(name=m_name).first()
                     fm = FarmerMaterial(
                         farmer_id=f.id,
                         pole_no='1',
                         material_name=m_name,
+                        item_code=m_obj.item_code if m_obj else resolve_item_code_from_name(m_name),
                         qty_required=Decimal('0.0'),
                         qty_issued=Decimal('0.0'),
                         qty_consumed=val
@@ -2003,10 +2367,7 @@ def manager_save_consumption(ro_id):
                 for m_name in material_list:
                     input_key = f"consumed_{f.id}_{old_p}_{m_name}"
                     raw_val = request.form.get(input_key, '').strip()
-                    if not raw_val and m_name == 'PSC Pole 8 MTR':
-                        val = Decimal('1.0')
-                    else:
-                        val = Decimal(raw_val) if raw_val else Decimal('0.0')
+                    val = Decimal(raw_val) if raw_val else Decimal('0.0')
                     
                     # Check if there is an existing record under old pole name
                     fm = FarmerMaterial.query.filter_by(farmer_id=f.id, material_name=m_name, pole_no=old_p).first()
@@ -2019,17 +2380,19 @@ def manager_save_consumption(ro_id):
                         if fm:
                             fm.qty_consumed = val
                         else:
+                            m_obj = Material.query.filter_by(name=m_name).first()
                             fm = FarmerMaterial(
                                 farmer_id=f.id,
                                 pole_no=new_p,
                                 material_name=m_name,
+                                item_code=m_obj.item_code if m_obj else resolve_item_code_from_name(m_name),
                                 qty_required=Decimal('0.0'),
                                 qty_issued=Decimal('0.0'),
                                 qty_consumed=val
                             )
                             db.session.add(fm)
                             
-            # 3. Handle deleted poles by setting their consumed quantities to 0
+            # 3. Handle deleted poles by permanently removing their DB records
             all_db_poles = db.session.query(FarmerMaterial.pole_no).filter(
                 FarmerMaterial.farmer_id == f.id,
                 FarmerMaterial.pole_no.isnot(None)
@@ -2039,11 +2402,9 @@ def manager_save_consumption(ro_id):
             new_pole_names = set(submitted_poles.values())
             for db_p in all_db_poles:
                 if db_p not in new_pole_names:
-                    fms_to_clear = FarmerMaterial.query.filter_by(farmer_id=f.id, pole_no=db_p).all()
-                    for fm in fms_to_clear:
-                        fm.qty_consumed = Decimal('0.0')
-                        if fm.qty_required == Decimal('0.0'):
-                            db.session.delete(fm)
+                    fms_to_delete = FarmerMaterial.query.filter_by(farmer_id=f.id, pole_no=db_p).all()
+                    for fm in fms_to_delete:
+                        db.session.delete(fm)
                 
     # Update farmer statuses — only Active/Started farmers
     if action == 'submit':
@@ -2065,18 +2426,29 @@ def manager_save_consumption(ro_id):
     
     # Synchronize central warehouse consumed quantities
     for m_name in material_list:
-        m = Material.query.filter_by(name=m_name).first()
+        resolved_code = resolve_item_code_from_name(m_name)
+        m = find_material_by_code_or_name(resolved_code, m_name)
         if m:
-            from sqlalchemy import func
-            total_consumed = db.session.query(func.sum(FarmerMaterial.qty_consumed)).filter(
-                FarmerMaterial.material_name == m_name
-            ).scalar() or Decimal('0.0')
+            from sqlalchemy import func, or_
+            if m.item_code:
+                total_consumed = db.session.query(func.sum(FarmerMaterial.qty_consumed)).filter(
+                    or_(
+                        FarmerMaterial.item_code == m.item_code,
+                        FarmerMaterial.material_name == m.name
+                    )
+                ).scalar() or Decimal('0.0')
+            else:
+                total_consumed = db.session.query(func.sum(FarmerMaterial.qty_consumed)).filter(
+                    FarmerMaterial.material_name == m.name
+                ).scalar() or Decimal('0.0')
             m.consumed_qty = Decimal(str(total_consumed))
             
     db.session.commit()
     
     if action == 'submit':
         return redirect(url_for('manager_dashboard'))
+    if request.referrer and 'active-farmers' in request.referrer:
+        return redirect(url_for('manager_active_farmers', ro_id=ro.id))
     return redirect(url_for('manager_sub_order_detail', ro_id=ro.id))
 
 @app.route('/manager/sub-order/<int:ro_id>/download-excel')
@@ -2104,6 +2476,14 @@ def manager_download_excel(ro_id):
         download_name=filename
     )
 
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
 # ===================== INITIALIZATION =====================
 
 is_testing_init = 'pytest' in sys.modules or 'unittest' in sys.modules or app.config.get('TESTING')
@@ -2117,3 +2497,4 @@ if not is_testing_init:
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
+

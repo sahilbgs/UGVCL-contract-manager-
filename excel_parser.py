@@ -50,7 +50,8 @@ def parse_farmer_excel(file_path):
             'ht': ['ht', 'ht line', 'ht_line', 'ht_length'],
             'lt4': ['lt4', 'lt 4', 'lt_4', 'lt 4 wire', 'lt 4wire'],
             'lt2': ['lt2', 'lt 2', 'lt_2', 'lt 2 wire', 'lt 2wire'],
-            'tc': ['tc', 't/c', 'transformer', 'transformer centre']
+            'tc': ['tc', 't/c', 'transformer', 'transformer centre'],
+            'ex': ['ex', 'tapping', 'tap', 'ex_pole', 'ex pole', 'tapping_ex', 'tapping from ex. pole', 'tapping from ex pole']
         }
         
         # Check if we can find at least applicant and village columns
@@ -111,6 +112,7 @@ def parse_flat_excel(file_path, mappings, sheet_name):
             lt4 = float(row.get(mappings.get('lt4'), 0.0)) if pd.notnull(row.get(mappings.get('lt4'))) else 0.0
             lt2 = float(row.get(mappings.get('lt2'), 0.0)) if pd.notnull(row.get(mappings.get('lt2'))) else 0.0
             tc = int(row.get(mappings.get('tc'), 0)) if pd.notnull(row.get(mappings.get('tc'))) else 0
+            ex = float(row.get(mappings.get('ex'), 0.0)) if pd.notnull(row.get(mappings.get('ex'))) else 0.0
             
             # For flat sheets, we can estimate default materials based on lengths
             materials = {}
@@ -136,6 +138,7 @@ def parse_flat_excel(file_path, mappings, sheet_name):
                 'lt4': lt4,
                 'lt2': lt2,
                 'tc': tc,
+                'ex': ex,
                 'materials': materials
             })
     except Exception as e:
@@ -235,6 +238,7 @@ def parse_ugvcl_material_excel(file_path, sheet_names):
                         'lt4': 0.0,
                         'lt2': 0.0,
                         'tc': 0,
+                        'ex': 0.0,
                         'materials': {},
                         'poles': []
                     }

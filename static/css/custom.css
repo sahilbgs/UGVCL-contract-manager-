@@ -13,15 +13,27 @@
     --danger-red: #e76f51;
     --gray-text: #6c7a89;
     --light-gray: #f3f4f6;
+    --bottom-nav-height: 60px;
+    --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Smooth scroll globally */
+html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
 }
 
 body {
     font-family: 'Outfit', sans-serif !important;
     background-color: var(--bg-light);
     color: var(--navy-dark);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
 }
 
-/* Sidebar Custom Styling */
+/* =====================================================
+   SIDEBAR STYLES
+   ===================================================== */
 .main-sidebar {
     background-color: var(--navy-blue) !important;
     box-shadow: 4px 0 15px rgba(0, 0, 0, 0.15) !important;
@@ -42,7 +54,9 @@ body {
     letter-spacing: 1px;
 }
 
-/* Gradient Background Box Styling */
+/* =====================================================
+   GRADIENT BACKGROUNDS
+   ===================================================== */
 .bg-navy-gradient {
     background: linear-gradient(135deg, var(--navy-blue) 0%, var(--navy-light) 100%) !important;
 }
@@ -59,6 +73,9 @@ body {
     background: linear-gradient(135deg, #1d3557 0%, var(--success-green) 100%) !important;
 }
 
+/* =====================================================
+   STAT BOXES
+   ===================================================== */
 .small-box {
     border-radius: 15px !important;
     overflow: hidden;
@@ -82,7 +99,9 @@ body {
     opacity: 0.25;
 }
 
-/* Premium UI Elements */
+/* =====================================================
+   PREMIUM UI ELEMENTS
+   ===================================================== */
 .card {
     border-radius: 15px !important;
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04) !important;
@@ -120,7 +139,9 @@ body {
     color: #ffffff;
 }
 
-/* Custom Table Grid styling for Excel-like feel */
+/* =====================================================
+   TABLE STYLES
+   ===================================================== */
 .table-grid {
     border-collapse: collapse;
 }
@@ -214,3 +235,534 @@ button[aria-expanded="false"] .hide-text {
     background-color: rgba(0, 43, 73, 0.04) !important;
 }
 
+/* =====================================================
+   BOTTOM NAVIGATION BAR (MOBILE)
+   ===================================================== */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background: #ffffff;
+    border-top: 1px solid #e2e8f0;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    padding-bottom: var(--safe-area-bottom);
+}
+
+.mobile-bottom-nav .nav-items {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    height: var(--bottom-nav-height);
+    padding: 0 4px;
+}
+
+.mobile-bottom-nav .nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: var(--gray-text);
+    font-size: 10px;
+    font-weight: 600;
+    gap: 2px;
+    padding: 4px 8px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    flex: 1;
+    min-height: 48px;
+    position: relative;
+}
+
+.mobile-bottom-nav .nav-tab i {
+    font-size: 18px;
+    transition: all 0.2s;
+}
+
+.mobile-bottom-nav .nav-tab.active {
+    color: var(--navy-blue);
+}
+
+.mobile-bottom-nav .nav-tab.active i {
+    color: var(--cyan-accent);
+    transform: scale(1.1);
+}
+
+.mobile-bottom-nav .nav-tab.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 28px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--teal-blue), var(--cyan-accent));
+    border-radius: 0 0 3px 3px;
+}
+
+.mobile-bottom-nav .nav-tab span {
+    letter-spacing: 0.2px;
+    line-height: 1;
+}
+
+/* =====================================================
+   PWA INSTALL BANNER
+   ===================================================== */
+.pwa-install-banner {
+    display: none;
+    position: fixed;
+    bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 8px);
+    left: 12px;
+    right: 12px;
+    z-index: 1060;
+    background: linear-gradient(135deg, var(--navy-blue), var(--navy-light));
+    color: #fff;
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 30px rgba(0, 43, 73, 0.35);
+    animation: slideUp 0.4s ease-out;
+}
+
+.pwa-install-banner .install-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.pwa-install-banner .install-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 183, 3, 0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.pwa-install-banner .install-text {
+    flex: 1;
+}
+
+.pwa-install-banner .install-text strong {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 2px;
+}
+
+.pwa-install-banner .install-text small {
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.pwa-install-banner .btn-install {
+    background: linear-gradient(90deg, var(--cyan-accent), var(--teal-blue));
+    border: none;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 12px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pwa-install-banner .btn-install:hover {
+    transform: scale(1.05);
+}
+
+.pwa-install-banner .btn-dismiss {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 18px;
+    padding: 4px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+@keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+/* =====================================================
+   MOBILE RESPONSIVE STYLES (max-width: 768px)
+   ===================================================== */
+@media (max-width: 768px) {
+
+    /* ── Show bottom nav, hide sidebar and footer ── */
+    .mobile-bottom-nav {
+        display: block;
+    }
+
+    .main-sidebar {
+        transform: translateX(-250px) !important;
+    }
+
+    body.sidebar-open .main-sidebar {
+        transform: translateX(0) !important;
+    }
+
+    .main-footer {
+        display: none !important;
+    }
+
+    /* ── Content spacing for bottom nav ── */
+    .content-wrapper {
+        padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 8px) !important;
+        min-height: calc(100vh - 56px) !important;
+    }
+
+    /* ── Navbar compact ── */
+    .main-header.navbar {
+        padding: 0 8px;
+        min-height: 50px;
+    }
+
+    .main-header .navbar-nav .nav-link {
+        padding: 8px 10px;
+    }
+
+    /* ── Container reduced padding ── */
+    .container-fluid {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    .content-header {
+        padding: 8px 0 !important;
+    }
+
+    section.content {
+        padding: 0 !important;
+    }
+
+    /* ── Typography scaling ── */
+    .h1, h1 { font-size: 1.35rem !important; }
+    .h2, h2 { font-size: 1.2rem !important; }
+    .h3, h3 { font-size: 1.1rem !important; }
+    .h4, h4 { font-size: 1rem !important; }
+    .h5, h5 { font-size: 0.95rem !important; }
+
+    /* ── Card compact styles ── */
+    .card {
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .card:hover {
+        transform: none !important;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .card-body {
+        padding: 12px !important;
+    }
+
+    .card-header {
+        padding: 10px 12px !important;
+    }
+
+    .card-title {
+        font-size: 0.95rem !important;
+    }
+
+    /* ── Stat boxes compact ── */
+    .small-box {
+        border-radius: 12px !important;
+        margin-bottom: 10px !important;
+    }
+
+    .small-box:hover {
+        transform: none !important;
+    }
+
+    .small-box .inner {
+        padding: 12px 14px !important;
+    }
+
+    .small-box .inner h3 {
+        font-size: 1.3rem !important;
+    }
+
+    .small-box .inner p {
+        font-size: 0.78rem !important;
+    }
+
+    .small-box .icon {
+        font-size: 40px !important;
+        top: 8px !important;
+        right: 8px !important;
+    }
+
+    /* ── Form controls - prevent iOS zoom ── */
+    input[type="text"],
+    input[type="number"],
+    input[type="date"],
+    input[type="file"],
+    input[type="password"],
+    input[type="email"],
+    select,
+    textarea,
+    .form-control,
+    .form-select {
+        font-size: 16px !important;
+    }
+
+    /* ── Touch target sizing ── */
+    .btn,
+    .nav-link,
+    .action-btn,
+    .dropdown-item {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-xs {
+        min-height: 36px;
+        padding: 6px 10px !important;
+        font-size: 0.78rem !important;
+    }
+
+    /* ── Tables responsive ── */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 8px;
+    }
+
+    .table th, .table td {
+        padding: 8px 6px !important;
+        font-size: 0.8rem !important;
+        white-space: nowrap;
+    }
+
+    /* ── Modals fullscreen on mobile ── */
+    .modal-dialog {
+        margin: 0 !important;
+        max-width: 100% !important;
+        min-height: 100vh;
+    }
+
+    .modal-content {
+        border-radius: 0 !important;
+        min-height: 100vh;
+        border: none !important;
+    }
+
+    .modal-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        border-radius: 0 !important;
+    }
+
+    .modal-header .btn-close {
+        padding: 12px !important;
+        margin: -4px -4px -4px auto !important;
+    }
+
+    .modal-body {
+        padding: 12px 12px 90px 12px !important; /* Safe bottom spacing for PWA standalone nav bars */
+    }
+
+    .modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        background: #fff;
+        padding: 10px 12px !important;
+    }
+
+    /* ── Input groups compact ── */
+    .input-group {
+        flex-wrap: nowrap;
+    }
+
+    .input-group-text {
+        padding: 8px 10px;
+    }
+
+    /* ── Badges compact ── */
+    .badge {
+        font-size: 0.7rem !important;
+        padding: 3px 6px !important;
+    }
+
+    /* ── Alerts compact ── */
+    .alert {
+        padding: 10px 12px !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 10px !important;
+    }
+
+    /* ── Page header stacking ── */
+    .d-flex.justify-content-between.align-items-center.mb-4.pb-2.border-bottom {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px;
+    }
+
+    /* ── Tab navigation scrollable ── */
+    .nav-tabs {
+        flex-wrap: nowrap !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 6px !important;
+    }
+
+    .nav-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .nav-tabs .nav-link {
+        white-space: nowrap;
+        font-size: 0.82rem !important;
+        padding: 8px 14px !important;
+    }
+
+    /* ── Progress bars ── */
+    .progress {
+        height: 4px !important;
+        border-radius: 2px !important;
+    }
+
+    /* ── Search/Sort bars stack ── */
+    .row.p-3.bg-light.border-bottom.align-items-center.m-0 {
+        padding: 10px !important;
+    }
+
+    /* ── Drag and drop zones compact ── */
+    .drag-drop-zone {
+        padding: 24px 16px !important;
+    }
+
+    .drag-drop-zone .fa-4x {
+        font-size: 2.5rem !important;
+    }
+
+    .drag-drop-zone h5 {
+        font-size: 0.95rem !important;
+    }
+
+    /* ── Mobile card layout utility ── */
+    .mobile-card-item {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
+
+    .mobile-card-item .card-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+    }
+
+    .mobile-card-item .card-row .label {
+        font-size: 0.75rem;
+        color: var(--gray-text);
+        font-weight: 500;
+    }
+
+    .mobile-card-item .card-row .value {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--navy-dark);
+        text-align: right;
+    }
+
+    .mobile-card-item .card-title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .mobile-card-item .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .mobile-card-item .card-actions .btn {
+        flex: 1;
+        font-size: 0.78rem !important;
+        padding: 8px 6px !important;
+    }
+}
+
+/* =====================================================
+   EXTRA SMALL MOBILE (max-width: 400px)
+   ===================================================== */
+@media (max-width: 400px) {
+    .container-fluid {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    .small-box .inner h3 {
+        font-size: 1.1rem !important;
+    }
+
+    .card-body {
+        padding: 10px !important;
+    }
+
+    .mobile-bottom-nav .nav-tab {
+        font-size: 9px;
+    }
+
+    .mobile-bottom-nav .nav-tab i {
+        font-size: 16px;
+    }
+}
+
+/* =====================================================
+   TABLET LANDSCAPE & MEDIUM SCREENS
+   ===================================================== */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container-fluid {
+        padding-left: 15px !important;
+        padding-right: 15px !important;
+    }
+
+    .small-box .inner h3 {
+        font-size: 1.4rem;
+    }
+}
+
+/* =====================================================
+   PWA STANDALONE MODE ADJUSTMENTS
+   ===================================================== */
+@media (display-mode: standalone) {
+    body {
+        -webkit-user-select: none;
+        user-select: auto;
+    }
+
+    /* Extra top padding for iOS status bar in standalone mode */
+    .main-header.navbar {
+        padding-top: env(safe-area-inset-top, 0px);
+    }
+
+    .content-wrapper {
+        padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 12px) !important;
+    }
+}

@@ -350,10 +350,20 @@
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(0,0,0,0.15);
     }
+
+    /* ── Mobile Overrides ── */
+    @media (max-width: 768px) {
+        .hero-header { padding: 16px !important; }
+        .hero-header h1 { font-size: 1.15rem !important; }
+        .meta-item { padding: 10px 12px; gap: 8px; }
+        .meta-icon-wrapper { width: 32px; height: 32px; font-size: 0.9rem; }
+        .btn-back { min-height: 44px; padding: 8px 14px; font-size: 0.82rem; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<div id="manager-detail-container">
 <!-- Hero Header block -->
 <div class="hero-header d-flex flex-wrap justify-content-between align-items-center">
     <div>
@@ -487,27 +497,29 @@
 
 <!-- ==================== SECTION 1: Farmer Activation & Status Control ==================== -->
 {% if farmers %}
-<div class="card shadow-sm mb-4">
+<div class="card shadow-sm mb-4" id="section-farmers">
     <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
         <h5 class="m-0 font-weight-bold text-navy" style="font-size: 1.05rem;">
-            <i class="fas fa-users mr-2 text-primary"></i>Farmer Activation & Status Control
+            <i class="fas fa-users mr-2 text-primary"></i>Farmer Activation & Status Control (Pending Farmers)
         </h5>
         <span class="text-muted text-xs">
-            <i class="fas fa-info-circle mr-1 text-primary"></i>Activate farmers below to add them to the Material Account Sheet.
+            <i class="fas fa-info-circle mr-1 text-primary"></i>Activate farmers below to add them to the Active Farmer Material Sheet.
         </span>
     </div>
     <div class="card-body p-0">
-        <div class="table-responsive">
+        <!-- Desktop Table (>= 768px) -->
+        <div class="table-responsive d-none d-md-block">
             <table class="table mb-0 align-middle farmer-overview-table">
                 <thead>
                     <tr>
                         <th style="width:5%;" class="text-center">#</th>
-                        <th style="width:22%;">Farmer Name</th>
+                        <th style="width:20%;">Farmer Name</th>
                         <th style="width:13%;">Village</th>
                         <th style="width:12%;">SR Number</th>
-                        <th style="width:8%;" class="text-center">HT (km)</th>
-                        <th style="width:8%;" class="text-center">LT4 (km)</th>
-                        <th style="width:8%;" class="text-center">LT2 (km)</th>
+                        <th style="width:7%;" class="text-center">HT (km)</th>
+                        <th style="width:7%;" class="text-center">LT4 (km)</th>
+                        <th style="width:7%;" class="text-center">LT2 (km)</th>
+                        <th style="width:7%;" class="text-center">EX</th>
                         <th style="width:10%;" class="text-center">Status</th>
                         <th style="width:16%;" class="text-center">Actions</th>
                     </tr>
@@ -537,18 +549,21 @@
                                     <td class="text-center font-weight-medium">{{ float(f.ht) if f.ht else '—' }}</td>
                                     <td class="text-center font-weight-medium">{{ float(f.lt4) if f.lt4 else '—' }}</td>
                                     <td class="text-center font-weight-medium">{{ float(f.lt2) if f.lt2 else '—' }}</td>
+                                    <td class="text-center font-weight-medium">{{ float(f.ex) if f.ex else '—' }}</td>
                                     <td class="text-center">
                                         <span class="badge-status badge-status-pending"><i class="fas fa-clock"></i>Pending</span>
                                     </td>
                                     <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2 flex-wrap">
                                             <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="d-inline m-0">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <input type="hidden" name="status" value="Active">
                                                 <button type="submit" class="btn btn-sm btn-success btn-action-pill" title="Activate — add to Material Account Sheet">
                                                     <i class="fas fa-play mr-1"></i>Activate
                                                 </button>
                                             </form>
                                             <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="d-inline m-0" onsubmit="return confirm('Reject farmer {{ f.applicant_name }}? This will clear any saved consumption data.')">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <input type="hidden" name="status" value="Disputed">
                                                 <button type="submit" class="btn btn-sm btn-outline-danger btn-action-pill" title="Reject (dispute) this farmer">
                                                     <i class="fas fa-ban mr-1"></i>Reject
@@ -561,7 +576,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="9" class="text-center py-4 text-muted">
+                            <td colspan="10" class="text-center py-4 text-muted">
                                 <i class="fas fa-check-circle text-success mr-2"></i>
                                 <span class="font-weight-bold">All farmers have been activated or rejected.</span>
                             </td>
@@ -569,6 +584,57 @@
                     {% endif %}
                 </tbody>
             </table>
+        </div>
+
+        <!-- Mobile Vertical Cards (< 768px) -->
+        <div class="d-md-none p-3 bg-light-subtle">
+            {% set pending_ns_mob = namespace(has_pending=false) %}
+            {% for f in farmers %}
+                {% if f.status == 'Pending' %}
+                    {% set pending_ns_mob.has_pending = true %}
+                    <div class="card mb-3 shadow-2xs border-0" style="border-radius: 12px; overflow: hidden;">
+                        <div class="card-body p-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div>
+                                    <strong class="text-navy text-uppercase d-block mb-1" style="font-size: 0.9rem;">{{ f.applicant_name }}</strong>
+                                    <span class="text-muted text-xs"><i class="fas fa-map-marker-alt mr-1 text-danger"></i>{{ f.village or 'N/A' }} · SR: <strong class="text-dark">{{ f.sr_number }}</strong></span>
+                                </div>
+                                <span class="badge bg-secondary font-weight-bold">Pending</span>
+                            </div>
+                            
+                            <div class="d-flex justify-content-around text-xs text-muted my-2 py-2 border-top border-bottom bg-light rounded">
+                                <span><strong>HT:</strong> {{ float(f.ht) if f.ht else '—' }}</span>
+                                <span><strong>LT4:</strong> {{ float(f.lt4) if f.lt4 else '—' }}</span>
+                                <span><strong>LT2:</strong> {{ float(f.lt2) if f.lt2 else '—' }}</span>
+                                <span><strong>EX:</strong> {{ float(f.ex) if f.ex else '—' }}</span>
+                            </div>
+                            
+                            <div class="d-flex gap-2 mt-2">
+                                <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="flex-fill m-0">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="status" value="Active">
+                                    <button type="submit" class="btn btn-sm btn-success w-100 font-weight-bold py-1.5" style="border-radius: 6px;">
+                                        <i class="fas fa-play mr-1"></i>Activate
+                                    </button>
+                                </form>
+                                <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="flex-fill m-0" onsubmit="return confirm('Reject farmer {{ f.applicant_name }}?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <input type="hidden" name="status" value="Disputed">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100 font-weight-bold py-1.5" style="border-radius: 6px;">
+                                        <i class="fas fa-ban mr-1"></i>Reject
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            {% if not pending_ns_mob.has_pending %}
+                <div class="text-center py-4 text-muted bg-white rounded-3 border">
+                    <i class="fas fa-check-circle text-success mr-2"></i>
+                    <span class="font-weight-bold">All farmers have been activated or rejected.</span>
+                </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -582,261 +648,57 @@
     </div>
 {% endif %}
 
-<!-- ==================== SECTION 2: MATERIAL ACCOUNT SHEET ==================== -->
-<div class="mt-5">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="m-0 font-weight-bold text-navy"><i class="fas fa-table mr-2 text-warning"></i>Material Consumption Grid</h4>
-        <span class="text-muted text-xs font-weight-medium">Scroll horizontally for materials, vertically for farmers. Header is sticky on top.</span>
-    </div>
-
-    {% set grid_ns = namespace(has_grid_farmers=false) %}
-    {% for f in farmers %}
-        {% if f.status != 'Pending' %}
-            {% set grid_ns.has_grid_farmers = true %}
-        {% endif %}
-    {% endfor %}
-
-    {% if grid_ns.has_grid_farmers %}
-        {% if ro.status == 'Completed' %}
-            <div class="alert alert-success border-0 shadow-sm d-flex align-items-center mb-4 p-3" style="border-radius: 12px;">
-                <i class="fas fa-lock fa-lg mr-3"></i>
-                <div>
-                    <h6 class="font-weight-bold mb-0">Sheet Locked & Submitted</h6>
-                    <small>This material consumption sheet has been finalized. All quantities have been debited from the main warehouse stock and changes are locked.</small>
-                </div>
-            </div>
-        {% elif ro.status == 'In Progress' %}
-            <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-4 p-3" style="border-radius: 12px;">
-                <i class="fas fa-info-circle fa-lg mr-3 text-dark"></i>
-                <div>
-                    <h6 class="font-weight-bold mb-0 text-dark">Draft Saved (Stock Levels Updated)</h6>
-                    <small class="text-dark">Values are currently saved in draft mode. You can edit and update consumption quantities at any time before final submission.</small>
-                </div>
-            </div>
-        {% endif %}
-
-        {% if materials %}
-            <form action="{{ url_for('manager_save_consumption', ro_id=ro.id) }}" method="POST">
-
-                <!-- Redesigned Sheet Meta Section -->
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-body p-4 bg-navy-gradient text-white" style="border-radius: 16px;">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h4 class="m-0 font-weight-bold" style="letter-spacing: 0.5px; font-size: 1.25rem;">
-                                <i class="fas fa-clipboard-list mr-2 text-warning"></i>Inventory & Material Account Sheet
-                            </h4>
-                            <span class="badge bg-light text-navy font-weight-bold px-3 py-2" style="font-size: 0.8rem; border-radius: 8px;">
-                                PO: {{ ro.po_no }}
-                            </span>
-                        </div>
-                        <hr class="border-light opacity-25 my-3">
-                        <div class="row g-3" style="font-size: 0.88rem; opacity: 0.95;">
-                            <div class="col-md-4">
-                                <span class="d-block text-warning text-xs font-weight-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Contractor Name</span>
-                                <span class="font-weight-medium">{{ wo.contractor_name or 'N/A' }}</span>
-                            </div>
-                            <div class="col-md-4">
-                                <span class="d-block text-warning text-xs font-weight-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Scheme</span>
-                                <span class="font-weight-medium">{{ ro.scheme or 'N/A' }}</span>
-                            </div>
-                            <div class="col-md-4">
-                                <span class="d-block text-warning text-xs font-weight-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Annual Order No</span>
-                                <span class="font-weight-medium">{{ wo.work_order_no }}</span>
-                            </div>
-                            <div class="col-md-4 mt-2">
-                                <span class="d-block text-warning text-xs font-weight-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Sub-Work Order No</span>
-                                <span class="font-weight-medium">{{ ro.release_no }}</span>
-                            </div>
-                            <div class="col-md-4 mt-2">
-                                <span class="d-block text-warning text-xs font-weight-bold text-uppercase mb-1" style="letter-spacing: 0.5px;">Release Date</span>
-                                <span class="font-weight-medium">{{ ro.release_date.strftime('%d-%b-%Y') if ro.release_date else 'N/A' }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Material Account Sheet Scroll Grid -->
-                <div class="table-grid-scroll mb-4">
-                    <table class="table sheet-table mb-0" style="min-width: 1200px;">
-                        <thead>
-                            <tr>
-                                <th class="sticky-sr">
-                                    Sr<br>No.
-                                </th>
-                                <th class="sticky-farmer">
-                                    From Location To<br>MR No./ Date<br>PSC Pole 8 MTR
-                                </th>
-                                {% for m_name in materials %}
-                                    <th style="min-width: 80px; max-width: 110px;">
-                                        {{ m_name }}
-                                        <span class="unit-label">{{ material_units[m_name] or 'Nos' }}</span>
-                                    </th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% set grid_row_ns = namespace(index=0) %}
-                            {% for f in farmers %}
-                                {% if f.status != 'Pending' %}
-                                    {% set grid_row_ns.index = grid_row_ns.index + 1 %}
-                                    {% set is_active = f.status in ['Active', 'Started'] %}
-                                    {% set is_completed = f.status == 'Completed' %}
-                                    {% set is_rejected = f.status == 'Disputed' %}
-                                    {% set is_pending = f.status == 'Pending' %}
-
-                                    <!-- Farmer Header separator row -->
-                                    <tr class="farmer-{{ f.id }}-header-row" style="background-color: #f1f5f9; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                                        <td class="sticky-sr text-center font-weight-bold" style="background: #f1f5f9 !important; font-size: 0.85rem; color: #1e293b; border-bottom: 1px solid #cbd5e1;">
-                                            {{ grid_row_ns.index }}
-                                        </td>
-                                        <td class="sticky-farmer" style="background: #f1f5f9 !important; padding: 8px 12px; text-align: left; border-bottom: 1px solid #cbd5e1;">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span style="font-size: 0.8rem; font-weight: 700; color: #0f172a; text-transform: uppercase; {% if is_rejected %}text-decoration: line-through; color: #ef4444;{% endif %}">
-                                                    {{ f.applicant_name }}
-                                                    <span class="text-muted font-weight-normal ms-1" style="font-size: 0.72rem;">({{ f.village or 'N/A' }})</span>
-                                                    <span class="text-muted font-weight-normal ms-2" style="font-size: 0.65rem;">SR: {{ f.sr_number }}</span>
-                                                </span>
-                                                <div class="d-flex align-items-center gap-2">
-                                                    {% if is_active %}
-                                                        <button type="button" class="btn btn-xs btn-primary py-1 px-2 font-weight-bold" onclick="addPoleRow({{ f.id }})" style="font-size: 0.65rem; border-radius: 4px;">
-                                                            <i class="fas fa-plus mr-1"></i>Add Pole
-                                                        </button>
-                                                        <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="d-inline m-0" onsubmit="return confirm('Reject farmer {{ f.applicant_name }}? This will clear any saved consumption data.')">
-                                                            <input type="hidden" name="status" value="Disputed">
-                                                            <button type="submit" class="btn btn-xs btn-outline-danger py-1 px-2 font-weight-bold" style="font-size: 0.65rem; border-radius: 4px;" title="Reject (dispute) this farmer">
-                                                                <i class="fas fa-ban mr-1"></i>Reject
-                                                            </button>
-                                                        </form>
-                                                    {% endif %}
-                                                    
-                                                    {% if is_rejected %}
-                                                        <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="d-inline m-0">
-                                                            <input type="hidden" name="status" value="Active">
-                                                            <button type="submit" class="btn btn-xs btn-success py-1 px-2 font-weight-bold" style="font-size: 0.65rem; border-radius: 4px;" title="Activate farmer">
-                                                                <i class="fas fa-play mr-1"></i>Activate
-                                                            </button>
-                                                        </form>
-                                                        <form action="{{ url_for('manager_farmer_status', farmer_id=f.id) }}" method="POST" class="d-inline m-0">
-                                                            <input type="hidden" name="status" value="Pending">
-                                                            <button type="submit" class="btn btn-xs btn-outline-secondary py-1 px-2 font-weight-bold" style="font-size: 0.65rem; border-radius: 4px;" title="Reset back to Pending list">
-                                                                <i class="fas fa-undo mr-1"></i>Reset
-                                                            </button>
-                                                        </form>
-                                                    {% endif %}
-                                                    
-                                                    {% if f.status == 'Active' %}
-                                                        <span class="badge bg-primary" style="font-size: 0.6rem; padding: 3px 6px;">Active</span>
-                                                    {% elif f.status == 'Started' %}
-                                                        <span class="badge bg-warning text-dark" style="font-size: 0.6rem; padding: 3px 6px;">Draft</span>
-                                                    {% elif f.status == 'Completed' %}
-                                                        <span class="badge bg-success" style="font-size: 0.6rem; padding: 3px 6px;">Done</span>
-                                                    {% elif is_rejected %}
-                                                        <span class="badge bg-danger" style="font-size: 0.6rem; padding: 3px 6px;">Rejected</span>
-                                                    {% endif %}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        {% for m_name in materials %}
-                                            <td style="background-color: #f1f5f9; border-color: #cbd5e1; border-bottom: 1px solid #cbd5e1;"></td>
-                                        {% endfor %}
-                                    </tr>
-
-                                    <!-- Pole Rows -->
-                                    {% set poles = farmer_poles[f.id] %}
-                                    {% for p in poles %}
-                                        <tr class="farmer-{{ f.id }}-row {% if is_rejected %}row-rejected{% elif is_pending %}row-pending{% elif is_completed %}row-completed{% else %}row-active{% endif %}">
-                                            <!-- Column 1: Sr No -->
-                                            <td class="sticky-sr text-center vertical-align-middle">
-                                                {% if is_active and poles|length > 1 %}
-                                                    <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deletePoleRow(this)" title="Delete Pole" style="line-height:1;">
-                                                        <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
-                                                    </button>
-                                                {% endif %}
-                                            </td>
-
-                                            <!-- Column 2: Pole Designation -->
-                                            <td class="sticky-farmer align-middle text-center" style="padding: 6px;">
-                                                {% if is_active %}
-                                                    <input type="text" name="pole_name_{{ f.id }}_{{ p }}" value="{{ p }}" 
-                                                           class="form-control form-control-sm text-center font-weight-bold" 
-                                                           style="border: 1px solid #cbd5e1; font-size: 0.75rem; padding: 3px 5px; border-radius: 4px;" required>
-                                                {% else %}
-                                                    <input type="hidden" name="pole_name_{{ f.id }}_{{ p }}" value="{{ p }}">
-                                                    <span style="font-size: 0.75rem; font-weight: bold; {% if is_rejected %}text-decoration: line-through; color: #ccc;{% endif %}">{{ p }}</span>
-                                                {% endif %}
-                                            </td>
-
-                                            <!-- Material Consumption Inputs -->
-                                            {% for m_name in materials %}
-                                                <td class="text-center align-middle">
-                                                    {% set req_qty = required_pole_map[f.id][p][m_name] or 0.0 %}
-                                                    {% set cons_val = consumption_map[f.id][p][m_name] %}
-
-                                                    {% if is_active %}
-                                                        <input type="number" step="0.001" min="0"
-                                                               name="consumed_{{ f.id }}_{{ p }}_{{ m_name }}"
-                                                               value="{{ float(cons_val) if cons_val is not none else (1 if m_name == 'PSC Pole 8 MTR' else '') }}"
-                                                               class="mat-input"
-                                                               placeholder="{{ float(req_qty) if float(req_qty) > 0 else '0' }}">
-                                                        {% if float(req_qty) > 0 %}
-                                                            <span class="req-hint">Est: {{ float(req_qty) }}</span>
-                                                        {% endif %}
-                                                        {% if material_stocks[m_name] is defined and material_stocks[m_name] <= 0 %}
-                                                            <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;">Not Available</span>
-                                                        {% elif material_stocks[m_name] is defined and float(req_qty) > 0 and material_stocks[m_name] < float(req_qty) %}
-                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;" title="Only {{ material_stocks[m_name] }} available in inventory">Low Stock</span>
-                                                        {% endif %}
-
-                                                    {% elif is_completed %}
-                                                        <input type="number" step="0.001"
-                                                               name="consumed_{{ f.id }}_{{ p }}_{{ m_name }}"
-                                                               value="{{ float(cons_val) if cons_val is not none else '0' }}"
-                                                               class="mat-input" readonly>
-
-                                                    {% elif is_rejected %}
-                                                        <span class="text-danger font-weight-bold" style="font-size: 0.8rem;">0</span>
-
-                                                    {% elif is_pending %}
-                                                        <span class="text-muted" style="font-size: 0.8rem;">0</span>
-                                                    {% endif %}
-                                                </td>
-                                            {% endfor %}
-                                        </tr>
-                                    {% endfor %}
-                                {% endif %}
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Save Actions -->
-                {% if ro.status != 'Completed' %}
-                    <div class="d-flex justify-content-end gap-3 mt-4 mb-5">
-                        <button type="submit" name="action" value="draft" class="btn btn-warning btn-save-pill text-dark">
-                            <i class="fas fa-save mr-2"></i>Save Draft
-                        </button>
-                        <button type="submit" name="action" value="submit" class="btn btn-success btn-save-pill" onclick="return confirm('Finalize this sheet? Stock will be debited and active farmers will be locked.')">
-                            <i class="fas fa-check-circle mr-2"></i>Save & Submit
-                        </button>
-                    </div>
-                {% endif %}
-            </form>
-        {% endif %}
-    {% else %}
-        <div class="card text-center py-5 shadow-sm border border-light-subtle">
-            <div class="card-body">
-                <i class="fas fa-clipboard-list fa-3x mb-3 text-muted"></i>
-                <h5 class="text-muted font-weight-bold">No Activated Farmers</h5>
-                <p class="text-muted text-sm mb-0">Activate farmers from the list above to add them to the Material Account Sheet.</p>
-            </div>
+<!-- ==================== SECTION 2: LINK TO DEDICATED ACTIVE FARMERS PAGE ==================== -->
+<div class="mt-5 text-center">
+    <div class="card border-0 shadow-sm p-4 bg-light-subtle" style="border-radius: 16px;">
+        <div class="card-body">
+            <i class="fas fa-user-check fa-3x text-warning mb-3"></i>
+            <h4 class="font-weight-bold text-navy mb-2">Active Farmers Material Account Sheet</h4>
+            <p class="text-muted text-sm mb-4" style="max-width: 600px; margin: 0 auto;">
+                View activated farmers, manage pole consumption details, add poles, and submit stock drafts on the dedicated Active Farmers page.
+            </p>
+            <a href="{{ url_for('manager_active_farmers', ro_id=ro.id) }}" class="btn btn-navy font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                <i class="fas fa-table mr-2 text-warning"></i>Go to Active Farmers Material Sheet
+            </a>
         </div>
-    {% endif %}
+    </div>
+</div>
+
+<!-- Stock Error Modal -->
+<div class="modal fade" id="stockErrorModal" tabindex="-1" aria-labelledby="stockErrorModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+      <div class="modal-header bg-danger text-white border-bottom-0 p-3">
+        <h5 class="modal-title font-weight-bold" id="stockErrorModalLabel">
+          <i class="fas fa-exclamation-triangle mr-2"></i>Insufficient Stock
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <p class="text-dark font-weight-semibold mb-3" style="font-size: 0.95rem;">
+          The following material(s) do not have enough stock available in the warehouse:
+        </p>
+        <ul id="stockErrorList" class="list-group list-group-flush mb-0">
+          <!-- Errors will be dynamically inserted here -->
+        </ul>
+      </div>
+      <div class="modal-footer bg-light p-3 border-top-0 d-flex justify-content-end">
+        <button type="button" class="btn btn-secondary font-weight-bold px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Dismiss</button>
+      </div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-const materialStocks = {{ material_stocks | tojson }};
+let materialStocks = {{ material_stocks | tojson }};
+let materialsList = {{ materials | tojson }};
+
+function escapeHtmlAttr(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function addPoleRow(farmerId) {
     var randId = Date.now() + "_" + Math.floor(Math.random() * 1000);
     var oldPoleVal = "new_" + randId;
@@ -858,42 +720,64 @@ function addPoleRow(farmerId) {
         nextPoleNum = maxNum + 1;
     }
     
+    // 1. Desktop Table Row
     var rowHtml = '<tr class="farmer-' + farmerId + '-row row-active">';
-    
-    // Sr No Column (Delete button)
     rowHtml += '<td class="sticky-sr text-center">';
     rowHtml += '  <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deletePoleRow(this)" title="Delete Pole" style="line-height:1;">';
     rowHtml += '    <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>';
     rowHtml += '  </button>';
     rowHtml += '</td>';
-    
-    // Pole Name Column (From Location To / MR No./ Date)
     rowHtml += '<td class="sticky-farmer" style="padding: 6px; vertical-align: middle; text-align: center;">';
     rowHtml += '  <input type="text" name="pole_name_' + farmerId + '_' + oldPoleVal + '" value="' + nextPoleNum + '" ';
     rowHtml += '         class="form-control form-control-sm text-center font-weight-bold" ';
     rowHtml += '         style="border: 1px solid #cbd5e1; font-size: 0.75rem; padding: 3px 5px; border-radius: 4px;" required>';
     rowHtml += '</td>';
     
-    {% for m_name in materials %}
+    materialsList.forEach(function(m_name) {
+        var attrMat = escapeHtmlAttr(m_name);
         rowHtml += '<td class="text-center align-middle">';
-        var valAttr = '';
-        if ('{{ m_name }}' === 'PSC Pole 8 MTR') {
-            valAttr = ' value="1"';
-        }
-        rowHtml += '  <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_{{ m_name }}" class="mat-input" placeholder="0"' + valAttr + '>';
-        var stock = materialStocks['{{ m_name }}'] !== undefined ? materialStocks['{{ m_name }}'] : 0.0;
+        rowHtml += '  <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_' + attrMat + '" data-material="' + attrMat + '" class="mat-input" placeholder="0">';
+        var stock = materialStocks[m_name] !== undefined ? materialStocks[m_name] : 0.0;
         if (stock <= 0) {
             rowHtml += '  <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;">Not Available</span>';
         }
         rowHtml += '</td>';
-    {% endfor %}
-    
+    });
     rowHtml += '</tr>';
-    
-    // Insert new row after the last row of this farmer or after the header row
     lastRow.after(rowHtml);
     
-    // Toggle delete button visibility for the first row if we just added a second row
+    // 2. Mobile Vertical Card
+    var mobileHtml = '<div class="mb-3 p-3 bg-white rounded-3 shadow-2xs border mobile-pole-card-' + farmerId + '-' + oldPoleVal + '">';
+    mobileHtml += '  <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">';
+    mobileHtml += '    <span class="font-weight-bold text-navy text-sm d-flex align-items-center gap-1"><i class="fas fa-bolt text-warning mr-1"></i>Pole: <input type="text" name="pole_name_' + farmerId + '_' + oldPoleVal + '" value="' + nextPoleNum + '" class="form-control form-control-sm text-center font-weight-bold d-inline-block" style="width: 65px; height: 26px; font-size: 0.75rem; padding: 2px 4px; border: 1px solid #cbd5e1;" required></span>';
+    mobileHtml += '    <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deleteMobilePoleCard(' + farmerId + ', \'' + oldPoleVal + '\')" title="Delete Pole"><i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i></button>';
+    mobileHtml += '  </div>';
+    mobileHtml += '  <div class="row g-2">';
+    materialsList.forEach(function(m_name) {
+        var attrMat = escapeHtmlAttr(m_name);
+        mobileHtml += '    <div class="col-12 mat-card-item zero-mat-item-' + farmerId + '-' + oldPoleVal + '">';
+        mobileHtml += '      <div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">';
+        mobileHtml += '        <div style="line-height: 1.2;"><small class="d-block font-weight-medium text-dark" style="font-size: 0.75rem;">' + attrMat + '</small>';
+        var stock = materialStocks[m_name] !== undefined ? materialStocks[m_name] : 0.0;
+        if (stock <= 0) {
+            mobileHtml += '          <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-inline-block mt-1 px-1 py-0.5" style="font-size: 0.62rem;">Not Available</span>';
+        }
+        mobileHtml += '        </div>';
+        mobileHtml += '        <div style="width: 100px;">';
+        mobileHtml += '          <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_' + attrMat + '" class="form-control form-control-sm text-center font-weight-bold" placeholder="0" style="font-size: 0.8rem;">';
+        mobileHtml += '        </div>';
+        mobileHtml += '      </div>';
+        mobileHtml += '    </div>';
+    });
+    mobileHtml += '  </div>';
+    mobileHtml += '  <div class="text-center mt-2">';
+    mobileHtml += '    <button type="button" class="btn btn-xs btn-link text-muted" onclick="$(\'.zero-mat-item-' + farmerId + '-' + oldPoleVal + '\').toggleClass(\'d-none\'); $(this).text($(this).text().includes(\'Show All\') ? \'Show Only Non-Zero\' : \'Show All Materials\')">Show Only Non-Zero</button>';
+    mobileHtml += '  </div>';
+    mobileHtml += '</div>';
+    
+    $('.farmer-mobile-body-' + farmerId).append(mobileHtml);
+    
+    // Toggle delete button visibility for desktop
     var updatedRows = $('.farmer-' + farmerId + '-row');
     if (updatedRows.length > 1) {
         var firstSrCol = updatedRows.first().find('.sticky-sr');
@@ -907,21 +791,206 @@ function addPoleRow(farmerId) {
 }
 
 function deletePoleRow(btn) {
-    if (confirm("Delete this pole row?")) {
+    if (confirm("Delete this pole?")) {
         var row = $(btn).closest('tr');
+        var poleInput = row.find('input[name^="pole_name_"]');
+        if (poleInput.length > 0) {
+            var inputName = poleInput.attr('name');
+            var parts = inputName.split('_');
+            if (parts.length >= 4) {
+                var farmerId = parts[2];
+                var poleKey = parts.slice(3).join('_');
+                $('.mobile-pole-card-' + farmerId + '-' + poleKey).remove();
+            }
+        }
         var classes = row.attr('class').split(' ');
         var farmerClass = classes.find(function(c) { return c.startsWith('farmer-') && c.endsWith('-row'); });
         
         row.remove();
         
         if (farmerClass) {
-            var farmerId = farmerClass.replace('farmer-', '').replace('-row', '');
             var remainingRows = $('.' + farmerClass);
             if (remainingRows.length === 1) {
                 remainingRows.first().find('.sticky-sr').empty();
             }
         }
+        autoSaveDraftOnDelete();
     }
 }
+
+function deleteMobilePoleCard(farmerId, poleKey) {
+    if (confirm("Delete this pole?")) {
+        $('.mobile-pole-card-' + farmerId + '-' + poleKey).remove();
+        var poleInput = $('input[name="pole_name_' + farmerId + '_' + poleKey + '"]');
+        if (poleInput.length > 0) {
+            var row = poleInput.closest('tr');
+            var classes = row.attr('class').split(' ');
+            var farmerClass = classes.find(function(c) { return c.startsWith('farmer-') && c.endsWith('-row'); });
+            row.remove();
+            if (farmerClass) {
+                var remainingRows = $('.' + farmerClass);
+                if (remainingRows.length === 1) {
+                    remainingRows.first().find('.sticky-sr').empty();
+                }
+            }
+        }
+        autoSaveDraftOnDelete();
+    }
+}
+
+function autoSaveDraftOnDelete() {
+    var form = $('#consumption-form');
+    if (form.length > 0) {
+        var draftBtn = form.find('button[name="action"][value="draft"]');
+        if (draftBtn.length > 0) {
+            draftBtn.click();
+        } else {
+            form.append('<input type="hidden" name="action" value="draft">');
+            form.submit();
+        }
+    }
+}
+
+$(document).ready(function() {
+    $(document).on('submit', '#consumption-form', function(e) {
+        var proposedTotals = {};
+        for (var m in materialStocks) {
+            proposedTotals[m] = 0.0;
+        }
+        
+        $('input[name^="consumed_"]:not([readonly])').each(function() {
+            var matName = $(this).attr('data-material');
+            if (matName) {
+                var val = parseFloat($(this).val()) || 0.0;
+                proposedTotals[matName] = (proposedTotals[matName] || 0.0) + val;
+            }
+        });
+        
+        var errors = [];
+        for (var matName in proposedTotals) {
+            var proposed = proposedTotals[matName];
+            var available = materialStocks[matName] !== undefined ? materialStocks[matName] : 0.0;
+            if (proposed > available + 0.0001) {
+                errors.push("Insufficient stock for " + matName + ". Available: " + available.toFixed(3) + ", Proposed: " + proposed.toFixed(3));
+            }
+        }
+        
+        if (errors.length > 0) {
+            var errorList = $('#stockErrorList');
+            errorList.empty();
+            errors.forEach(function(err) {
+                errorList.append('<li class="list-group-item d-flex align-items-center gap-2 border-0 px-0 py-2 text-danger font-weight-semibold" style="font-size: 0.88rem;"><i class="fas fa-times-circle text-danger"></i> ' + err + '</li>');
+            });
+            $('#stockErrorModal').modal('show');
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    $('#consumption-form').on('submit', function() {
+        if ($(window).width() < 768) {
+            $('.table-grid-scroll :input').prop('disabled', true);
+        } else {
+            $('.farmer-mobile-cards :input').prop('disabled', true);
+        }
+    });
+
+
+    $(document).on('submit', 'form[action*="/manager/farmer-status/"]', function(e) {
+        e.preventDefault();
+        
+        var form = $(this);
+        var url = form.attr('action');
+        var data = form.serialize();
+        
+        var btn = form.find('button[type="submit"]');
+        var originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+        
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: data,
+            success: function(response) {
+                $.ajax({
+                    url: window.location.href,
+                    type: 'GET',
+                    success: function(htmlText) {
+                        var parser = new DOMParser();
+                        var doc = parser.parseFromString(htmlText, 'text/html');
+                        var newContent = $(doc).find('#manager-detail-container').html();
+                        
+                        if (newContent) {
+                            $('#manager-detail-container').html(newContent);
+                            
+                            var newFlashes = $(doc).find('.content-header .container-fluid').html();
+                            if (newFlashes) {
+                                $('.content-header .container-fluid').html(newFlashes);
+                            }
+                            
+                            var scriptText = $(doc).find('script:contains("materialStocks")').text();
+                            if (scriptText) {
+                                var match = scriptText.match(/let materialStocks = (\{.*?\});/);
+                                if (match && match[1]) {
+                                    try {
+                                        materialStocks = JSON.parse(match[1]);
+                                    } catch(err) {
+                                        console.error("Error updating material stocks:", err);
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    error: function() {
+                        btn.prop('disabled', false).html(originalHtml);
+                        alert("Error reloading data. Please refresh the page.");
+                    }
+                });
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                alert("Error updating status. Please try again.");
+            }
+        });
+    });
+});
+function showActiveFarmersDirectory() {
+    $('#active-farmers-directory-card').show();
+    $('#active-farmer-focus-bar').addClass('d-none');
+    $('#consumption-form').hide();
+}
+
+function filterFarmerView(farmerId) {
+    $('#active-farmers-directory-card').hide();
+    $('#active-farmer-focus-bar').removeClass('d-none');
+    $('#consumption-form').show();
+    
+    if (farmerId === 'all') {
+        $('#focus-farmer-name').text('All Active Farmers');
+        $('[class*="farmer-"][class*="-header-row"]').show();
+        $('[class*="farmer-"][class*="-row"]').show();
+        $('.farmer-mobile-cards .card').show();
+    } else {
+        var farmerName = $('.farmer-mobile-body-' + farmerId).closest('.card').find('h6').text().trim() || 'Selected Farmer';
+        $('#focus-farmer-name').text(farmerName);
+        
+        $('[class*="farmer-"][class*="-header-row"]').hide();
+        $('[class*="farmer-"][class*="-row"]').hide();
+        $('.farmer-' + farmerId + '-header-row').show();
+        $('.farmer-' + farmerId + '-row').show();
+        
+        $('.farmer-mobile-cards .card').hide();
+        $('.farmer-mobile-body-' + farmerId).closest('.card').show();
+    }
+}
+
+$(document).ready(function() {
+    // If arriving via #section-grid URL anchor, show Active Farmers Directory by default
+    if (window.location.hash === '#section-grid') {
+        showActiveFarmersDirectory();
+    } else if (window.location.hash === '#section-farmers') {
+        $('html, body').animate({ scrollTop: $('#section-farmers').offset().top - 80 }, 300);
+    }
+});
 </script>
 {% endblock %}

@@ -10,6 +10,8 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(20), default='manager')
+    full_name = db.Column(db.String(100))
+    profile_pic = db.Column(db.String(255))
 
 class WorkOrder(db.Model):
     __tablename__ = 'work_orders'
@@ -70,6 +72,7 @@ class Farmer(db.Model):
     lt4 = db.Column(db.Numeric(10, 3), default=0.0)
     lt2 = db.Column(db.Numeric(10, 3), default=0.0)
     tc = db.Column(db.Integer, default=0)
+    ex = db.Column(db.Numeric(10, 3), default=0.0)
     status = db.Column(db.String(50), default='Pending')  # Pending, Material Issued, Started, Completed
     po_no = db.Column(db.String(50), nullable=True)
     release_no = db.Column(db.String(50), nullable=True)
@@ -95,6 +98,7 @@ class FarmerMaterial(db.Model):
     farmer_id = db.Column(db.Integer, db.ForeignKey('farmers.id'), nullable=False)
     pole_no = db.Column(db.String(50), nullable=True)
     material_name = db.Column(db.String(100), nullable=False)
+    item_code = db.Column(db.String(50), nullable=True, index=True)
     qty_required = db.Column(db.Numeric(12, 3), default=0.0)
     qty_issued = db.Column(db.Numeric(12, 3), default=0.0)
     qty_consumed = db.Column(db.Numeric(12, 3), default=0.0)
@@ -276,3 +280,9 @@ class DocumentVault(db.Model):
     file_path = db.Column(db.String(255), nullable=False)
     related_id = db.Column(db.Integer, nullable=True)  # ID of the related model (e.g. work_order_id, release_order_id)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class MaterialMapping(db.Model):
+    __tablename__ = 'material_mappings'
+    id = db.Column(db.Integer, primary_key=True)
+    alias = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    item_code = db.Column(db.String(50), nullable=False)

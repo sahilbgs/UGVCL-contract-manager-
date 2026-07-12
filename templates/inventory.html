@@ -3,8 +3,8 @@
 {% block title %}Main Inventory | UGVCL Portal Contract Manager{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
-    <h1 class="h3 mb-0 text-navy font-weight-bold">
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 pb-2 border-bottom">
+    <h1 class="h3 mb-2 mb-md-0 text-navy font-weight-bold">
         <i class="fas fa-boxes-stacked mr-2 text-navy"></i>Main Inventory
     </h1>
     <span class="badge bg-navy rounded-pill px-3 py-2">
@@ -13,7 +13,7 @@
 </div>
 
 <!-- Tabs Navigation -->
-<ul class="nav nav-tabs mb-4 shadow-sm rounded bg-white p-2" id="inventoryTabs" role="tablist">
+<ul class="nav nav-tabs nav-fill mb-4 shadow-sm rounded bg-white p-2" id="inventoryTabs" role="tablist">
     <li class="nav-item" role="presentation">
         <button class="nav-link active font-weight-bold text-navy" id="stock-levels-tab" data-bs-toggle="tab" data-bs-target="#stock-levels" type="button" role="tab" aria-controls="stock-levels" aria-selected="true">
             <i class="fas fa-boxes-stacked mr-2"></i>Stock Levels & Rates
@@ -35,9 +35,16 @@
     <!-- TAB 1: STOCK LEVELS & RATES -->
     <div class="tab-pane fade show active" id="stock-levels" role="tabpanel" aria-labelledby="stock-levels-tab">
         <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
+            <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
                 <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-clipboard-list mr-2"></i>Inventory Levels & Rates Overview</h3>
-                <small class="text-muted"><i class="fas fa-info-circle mr-1"></i>Edit the unit prices below and click save to apply them globally.</small>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-sm btn-outline-success rounded-pill font-weight-bold px-3" id="view-all-credits-btn">
+                        <i class="fas fa-circle-plus mr-1"></i> Credit History
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill font-weight-bold px-3" id="view-all-debits-btn">
+                        <i class="fas fa-circle-minus mr-1"></i> Debit History
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <!-- Search and Sorting Bar -->
@@ -60,24 +67,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="table-responsive" style="max-height: 550px; overflow-y: auto;">
+                <!-- Desktop view (>= 768px) -->
+                <div class="table-responsive d-none d-md-block" style="max-height: 550px; overflow-y: auto;">
                     <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
                         <thead class="thead-light sticky-top" style="z-index: 10;">
                             <tr>
-                                <th class="text-left pl-4" style="width: 35%;">Item Name / Code</th>
-                                <th style="width: 20%;">Total Available Item</th>
-                                <th style="width: 22.5%;">
-                                    <div>Credit</div>
-                                    <button class="btn btn-xs btn-outline-success mt-1 px-2 rounded-pill font-weight-bold" id="view-all-credits-btn">
-                                        <i class="fas fa-history mr-1"></i> History
-                                    </button>
-                                </th>
-                                <th style="width: 22.5%;">
-                                    <div>Debit</div>
-                                    <button class="btn btn-xs btn-outline-danger mt-1 px-2 rounded-pill font-weight-bold" id="view-all-debits-btn">
-                                        <i class="fas fa-history mr-1"></i> History
-                                    </button>
-                                </th>
+                                <th class="text-left pl-4 text-nowrap" style="width: 55%;">Item Name / Code</th>
+                                <th class="text-nowrap" style="width: 45%;">Available Stock</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -105,57 +101,66 @@
                                                      {{ m.current_stock|float }}
                                                  </span>
                                             </td>
-                                            <td>
-                                                 <div class="d-flex flex-column align-items-center">
-                                                     <span class="font-weight-bold text-success" style="font-size: 15px;">
-                                                         {{ m.latest_credit_amount }}
-                                                     </span>
-                                                     {% if m.latest_credit != 'N/A' %}
-                                                         <small class="text-muted text-xs mt-1" style="font-size: 11px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                                                             {% set credit_parts = m.latest_credit.split(' (') %}
-                                                             {% if credit_parts|length > 1 %}
-                                                                 ({{ credit_parts[1] }}
-                                                             {% endif %}
-                                                         </small>
-                                                     {% endif %}
-                                                     <button class="btn btn-xs btn-link text-success mt-2 p-0 view-credits-btn" data-name="{{ m.name }}" title="View credit history">
-                                                         <i class="fas fa-circle-plus mr-1"></i> History
-                                                     </button>
-                                                 </div>
-                                            </td>
-                                            <td>
-                                                 <div class="d-flex flex-column align-items-center">
-                                                     <span class="font-weight-bold text-danger" style="font-size: 15px;">
-                                                         {{ m.latest_debit_amount }}
-                                                     </span>
-                                                     {% if m.latest_debit != 'N/A' %}
-                                                         <small class="text-muted text-xs mt-1" style="font-size: 11px; max-width: 140px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                                                             {% set debit_parts = m.latest_debit.split(' (') %}
-                                                             {% if debit_parts|length > 1 %}
-                                                                 ({{ debit_parts[1] }}
-                                                             {% endif %}
-                                                         </small>
-                                                     {% endif %}
-                                                     <button class="btn btn-xs btn-link text-danger mt-2 p-0 view-debits-btn" data-name="{{ m.name }}" title="View debit history">
-                                                         <i class="fas fa-circle-minus mr-1"></i> History
-                                                     </button>
-                                                 </div>
-                                            </td>
                                         </tr>
                                     {% endif %}
                                 {% endfor %}
                                 {% if active_count.value == 0 %}
                                     <tr>
-                                        <td colspan="4" class="text-center py-4 text-muted">No materials registered.</td>
+                                        <td colspan="2" class="text-center py-4 text-muted">No materials registered.</td>
                                     </tr>
                                 {% endif %}
                             {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">No materials registered.</td>
+                                    <td colspan="2" class="text-center py-4 text-muted">No materials registered.</td>
                                 </tr>
                             {% endif %}
                         </tbody>
                     </table>
+                </div>
+
+                <!-- Mobile view (< 768px) -->
+                <div class="d-md-none px-2 py-2" id="inventory-mobile-cards">
+                    {% if materials %}
+                        {% set active_count_mob = namespace(value=0) %}
+                        {% for m in materials %}
+                            {% if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 %}
+                                {% set active_count_mob.value = active_count_mob.value + 1 %}
+                                <div class="mobile-card-item inventory-mobile-card" data-original-index="{{ loop.index }}">
+                                    <div class="card-title-row">
+                                        <div>
+                                            <span class="font-weight-bold text-navy mobile-mat-name" style="font-size: 15px;">{{ m.name }}</span>
+                                            <div class="mt-1">
+                                                <span class="badge bg-light text-navy border mr-1">Code: <span class="mobile-mat-code">{{ m.item_code or 'N/A' }}</span></span>
+                                                <span class="badge bg-light text-muted border">Unit: {{ m.unit }}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                             <span class="badge bg-navy text-white px-2.5 py-1.5 font-weight-bold" style="font-size: 13px;">
+                                                 Stock: <span class="mobile-stock-qty">{{ m.current_stock|float }}</span>
+                                             </span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-row">
+                                        <span class="text-muted">Unit Price:</span>
+                                        <span class="font-weight-medium">
+                                            ₹<span class="mat-price-display">{{ '%.2f'|format(m.unit_price or 0.0) }}</span>
+                                            <button class="btn btn-xs btn-link p-0 ml-1 edit-material-btn" data-id="{{ m.id }}" data-name="{{ m.name }}" data-code="{{ m.item_code or '' }}" data-unit="{{ m.unit }}" data-price="{{ m.unit_price or 0.0 }}" title="Edit Material details">
+                                                <i class="fas fa-edit text-primary"></i>
+                                            </button>
+                                        </span>
+                                    </div>
+                                    
+
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                        {% if active_count_mob.value == 0 %}
+                            <div class="text-center py-4 text-muted">No materials registered.</div>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-4 text-muted">No materials registered.</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -176,7 +181,8 @@
                         <form id="ocrUploadForm" enctype="multipart/form-data">
                             <div class="form-group mb-3">
                                 <label for="gate_pass_file" class="form-label font-weight-bold">Select Gate Pass Document (PDF/Image)</label>
-                                <input type="file" class="form-control" id="gate_pass_file" name="file" accept="image/*,.pdf" required>
+                                <input type="file" class="form-control" id="gate_pass_file" name="file" accept="image/*,.pdf" capture="environment" required>
+
                             </div>
                             <button type="submit" class="btn btn-navy w-100 rounded-pill py-2">
                                 <i class="fas fa-wand-magic-sparkles mr-1"></i> Scan & Extract Items
@@ -196,7 +202,9 @@
                         <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-keyboard mr-2"></i>Option B: Manual Stock Entry</h3>
                     </div>
                     <form action="{{ url_for('inventory') }}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <input type="hidden" name="form_type" value="receipt">
+
                         <div class="card-body">
 
                             <div class="form-group mb-3">
@@ -387,7 +395,8 @@
                         <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-receipt mr-2"></i>Material Receipts Logs</h3>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <!-- Desktop view (>= 768px) -->
+                        <div class="table-responsive d-none d-md-block">
                             <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
                                 <thead class="thead-light">
                                     <tr>
@@ -427,9 +436,12 @@
                                             </td>
                                             <td class="text-muted">{{ r.date.strftime('%d-%b-%Y') }}</td>
                                             <td>
-                                                <a href="{{ url_for('receipt_delete', receipt_id=r.id) }}" class="btn btn-sm btn-outline-danger px-2 rounded-pill" onclick="return confirm('Are you sure you want to delete this receipt? The warehouse stock will be decreased.')" title="Delete Receipt">
-                                                    <i class="fas fa-trash-alt"></i> Delete
-                                                </a>
+                                                <form action="{{ url_for('receipt_delete', receipt_id=r.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this receipt? The warehouse stock will be decreased.')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill" title="Delete Receipt">
+                                                        <i class="fas fa-trash-alt"></i> Delete
+                                                    </button>
+                                                </form>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -440,6 +452,58 @@
                                     {% endif %}
                                 </tbody>
                             </table>
+                        </div>
+
+                        <!-- Mobile card view (< 768px) -->
+                        <div class="d-md-none px-2 py-2">
+                            {% if receipts %}
+                                {% for r in receipts %}
+                                <div class="mobile-card-item" style="border-left: 4px solid var(--navy-blue);">
+                                    <div class="card-title-row">
+                                        <div>
+                                            <span class="font-weight-bold text-navy" style="font-size: 14px;">MR No: {{ r.receipt_no }}</span>
+                                            <div class="text-xs text-muted mt-1">Release Order: Release {{ r.release_order.release_no if r.release_order else 'N/A' }}</div>
+                                        </div>
+                                        <span class="badge bg-light text-muted border">{{ r.date.strftime('%d-%b-%Y') }}</span>
+                                    </div>
+                                    
+                                    <div class="card-row">
+                                        <span class="text-muted">Items:</span>
+                                        <span class="badge bg-success-subtle text-success border rounded-pill font-weight-bold px-2 py-0.5">
+                                            <i class="fas fa-boxes-stacked mr-1"></i> {{ r.items|length }} Items
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="mt-2">
+                                        <button class="btn btn-xs btn-outline-navy w-100 rounded-pill font-weight-bold collapsed mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#items-collapse-mob-{{ r.id }}" aria-expanded="false" style="font-size: 11px;">
+                                            <span class="show-text"><i class="fas fa-chevron-down mr-1"></i> View Items Details</span>
+                                            <span class="hide-text d-none"><i class="fas fa-chevron-up mr-1"></i> Hide Items Details</span>
+                                        </button>
+                                        <div class="collapse" id="items-collapse-mob-{{ r.id }}">
+                                            <div class="card card-body bg-light border p-2 mb-0 shadow-xs rounded-3" style="max-height: 180px; overflow-y: auto; font-size: 12px;">
+                                                {% for item in r.items %}
+                                                    <div class="d-flex justify-content-between align-items-start border-bottom py-1 {% if loop.last %}border-bottom-0{% endif %}">
+                                                        <span class="text-wrap font-weight-medium text-navy" style="max-width: 65%;">{{ item.material_name }}</span>
+                                                        <span class="font-weight-bold text-navy text-right" style="white-space: nowrap;">{{ item.qty|float }} (₹{{ '%.2f'|format(item.rate or 0.0) }})</span>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="card-actions">
+                                        <form action="{{ url_for('receipt_delete', receipt_id=r.id) }}" method="POST" style="width: 100%;" onsubmit="return confirm('Are you sure you want to delete this receipt? The warehouse stock will be decreased.')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill py-2 font-weight-bold">
+                                                <i class="fas fa-trash-alt mr-1"></i> Delete Receipt Log
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted">No Material Receipts recorded yet.</div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -452,7 +516,8 @@
                         <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-undo mr-2"></i>Surplus Returns (Credit Receipts)</h3>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
+                        <!-- Desktop view (>= 768px) -->
+                        <div class="table-responsive d-none d-md-block">
                             <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
                                 <thead class="thead-light">
                                     <tr>
@@ -472,9 +537,12 @@
                                             <td><span class="text-success font-weight-bold">+{{ cr.qty }}</span></td>
                                             <td class="text-muted">{{ cr.date.strftime('%d-%b-%Y') }}</td>
                                             <td>
-                                                <a href="{{ url_for('credit_delete', credit_id=cr.id) }}" class="btn btn-sm btn-outline-danger px-2 rounded-pill" onclick="return confirm('Are you sure you want to delete this credit return? The warehouse stock will be decreased.')" title="Delete Return">
-                                                    <i class="fas fa-trash-alt"></i> Delete
-                                                </a>
+                                                <form action="{{ url_for('credit_delete', credit_id=cr.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this credit return? The warehouse stock will be decreased.')">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill" title="Delete Return">
+                                                        <i class="fas fa-trash-alt"></i> Delete
+                                                    </button>
+                                                </form>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -486,6 +554,39 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Mobile card view (< 768px) -->
+                        <div class="d-md-none px-2 py-2">
+                            {% if credit_receipts %}
+                                {% for cr in credit_receipts %}
+                                <div class="mobile-card-item" style="border-left: 4px solid var(--success-green);">
+                                    <div class="card-title-row">
+                                        <div>
+                                            <span class="font-weight-bold text-navy" style="font-size: 14px;">CR No: {{ cr.cr_number }}</span>
+                                            <small class="text-muted d-block mt-1">{{ cr.date.strftime('%d-%b-%Y') }}</small>
+                                        </div>
+                                        <span class="badge bg-success text-white font-weight-bold" style="font-size: 13px;">+{{ cr.qty }} Qty</span>
+                                    </div>
+                                    
+                                    <div class="card-row">
+                                        <span class="text-muted">Material Item:</span>
+                                        <strong class="text-dark">{{ cr.material_name }}</strong>
+                                    </div>
+                                    
+                                    <div class="card-actions">
+                                        <form action="{{ url_for('credit_delete', credit_id=cr.id) }}" method="POST" style="width: 100%;" onsubmit="return confirm('Are you sure you want to delete this credit return? The warehouse stock will be decreased.')">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill py-2 font-weight-bold">
+                                                <i class="fas fa-trash-alt mr-1"></i> Delete Return Record
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="text-center py-4 text-muted">No Credit Receipts (CR) recorded.</div>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -495,7 +596,7 @@
 
 <!-- Material Transaction History Modal -->
 <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-navy text-white py-3">
                 <h5 class="modal-title font-weight-bold" id="historyModalLabel">
@@ -527,7 +628,7 @@
                 <div class="tab-content p-4" id="modalTabsContent">
                     <!-- Tab 1: Combined Ledger -->
                     <div class="tab-pane fade show active" id="tab-ledger" role="tabpanel" aria-labelledby="tab-ledger-link">
-                        <div class="table-responsive" style="max-height: 380px;">
+                        <div class="table-responsive">
                             <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalLedgerTable">
                                 <thead class="table-light">
                                     <tr>
@@ -546,7 +647,7 @@
                     
                     <!-- Tab 2: Credit History -->
                     <div class="tab-pane fade" id="tab-credits" role="tabpanel" aria-labelledby="tab-credits-link">
-                        <div class="table-responsive" style="max-height: 380px;">
+                        <div class="table-responsive">
                             <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalCreditTable">
                                 <thead class="table-light">
                                     <tr>
@@ -565,7 +666,7 @@
                     
                     <!-- Tab 3: Debit History -->
                     <div class="tab-pane fade" id="tab-debits" role="tabpanel" aria-labelledby="tab-debits-link">
-                        <div class="table-responsive" style="max-height: 380px;">
+                        <div class="table-responsive">
                             <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalDebitTable">
                                 <thead class="table-light">
                                     <tr>
@@ -592,7 +693,7 @@
 
 <!-- Edit Material Modal -->
 <div class="modal fade" id="editMaterialModal" tabindex="-1" aria-labelledby="editMaterialModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-navy text-white py-3">
                 <h5 class="modal-title font-weight-bold" id="editMaterialModalLabel">
@@ -634,7 +735,7 @@
 
 <!-- All Credits History Modal -->
 <div class="modal fade" id="allCreditsModal" tabindex="-1" aria-labelledby="allCreditsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="max-height: 85vh;">
             <div class="modal-header bg-success text-white py-3">
                 <h5 class="modal-title font-weight-bold" id="allCreditsModalLabel">
@@ -669,7 +770,7 @@
 
 <!-- All Debits History Modal -->
 <div class="modal fade" id="allDebitsModal" tabindex="-1" aria-labelledby="allDebitsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow-lg" style="max-height: 85vh;">
             <div class="modal-header bg-danger text-white py-3">
                 <h5 class="modal-title font-weight-bold" id="allDebitsModalLabel">
@@ -732,6 +833,16 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
+        var isOcrScanning = false;
+
+        window.addEventListener('beforeunload', function (e) {
+            if (isOcrScanning) {
+                e.preventDefault();
+                e.returnValue = 'OCR scanning is in progress. Please do not leave or reload the page.';
+                return e.returnValue;
+            }
+        });
+
         // Search and Sort logic
         var searchInput = $('#inventorySearch');
         var sortSelect = $('#inventorySort');
@@ -742,9 +853,10 @@
             var sortVal = sortSelect.val();
             var rows = tableBody.find('tr').get();
 
+            // 1. Desktop Table filtering
             rows.forEach(function(row) {
                 var tr = $(row);
-                if (tr.find('td').length === 1 && tr.find('td').attr('colspan') === '4') {
+                if (tr.find('td').length === 1 && tr.find('td').attr('colspan') === '2') {
                     return;
                 }
                 
@@ -760,7 +872,7 @@
 
             var sortedRows = rows.filter(function(row) {
                 var tr = $(row);
-                return !(tr.find('td').length === 1 && tr.find('td').attr('colspan') === '4');
+                return !(tr.find('td').length === 1 && tr.find('td').attr('colspan') === '2');
             });
 
             sortedRows.sort(function(a, b) {
@@ -786,6 +898,44 @@
 
             $.each(sortedRows, function(index, row) {
                 tableBody.append(row);
+            });
+
+            // 2. Mobile Cards filtering & sorting
+            var cards = $('.inventory-mobile-card').get();
+            cards.forEach(function(card) {
+                var cardEl = $(card);
+                var name = cardEl.find('.mobile-mat-name').text().toLowerCase();
+                var code = cardEl.find('.mobile-mat-code').text().toLowerCase();
+                if (name.indexOf(searchQuery) !== -1 || code.indexOf(searchQuery) !== -1) {
+                    cardEl.show();
+                } else {
+                    cardEl.hide();
+                }
+            });
+
+            cards.sort(function(a, b) {
+                var cardA = $(a);
+                var cardB = $(b);
+                if (sortVal === 'stock-desc') {
+                    var stockA = parseFloat(cardA.find('.mobile-stock-qty').text()) || 0;
+                    var stockB = parseFloat(cardB.find('.mobile-stock-qty').text()) || 0;
+                    return stockB - stockA;
+                } else if (sortVal === 'stock-asc') {
+                    var stockA = parseFloat(cardA.find('.mobile-stock-qty').text()) || 0;
+                    var stockB = parseFloat(cardB.find('.mobile-stock-qty').text()) || 0;
+                    return stockA - stockB;
+                } else if (sortVal === 'name-asc') {
+                    var nameA = cardA.find('.mobile-mat-name').text().toLowerCase();
+                    var nameB = cardB.find('.mobile-mat-name').text().toLowerCase();
+                    return nameA.localeCompare(nameB);
+                } else {
+                    return parseInt(cardA.data('original-index')) - parseInt(cardB.data('original-index'));
+                }
+            });
+
+            var mobileCardsContainer = $('#inventory-mobile-cards');
+            $.each(cards, function(index, card) {
+                mobileCardsContainer.append(card);
             });
         }
 
@@ -850,6 +1000,7 @@
             e.preventDefault();
             
             var formData = new FormData(this);
+            isOcrScanning = true;
             ocrLoading.classList.remove('d-none');
             ocrPreviewCard.classList.add('d-none');
             
@@ -860,6 +1011,7 @@
                 contentType: false,
                 data: formData,
                 success: function(res) {
+                    isOcrScanning = false;
                     ocrLoading.classList.add('d-none');
                     if (res.success) {
                         allMaterialsGlobal = res.all_materials;
@@ -924,6 +1076,7 @@
                     }
                 },
                 error: function() {
+                    isOcrScanning = false;
                     ocrLoading.classList.add('d-none');
                     alert('Error scanning photo. Please check image size and quality.');
                 }
@@ -1325,9 +1478,12 @@
                                         <td class="font-weight-bold text-navy">${c.receipt_no}</td>
                                         <td class="text-left py-2">${itemsHtml}</td>
                                         <td>
-                                            <a href="${deleteUrl}" class="btn btn-sm btn-outline-danger px-2 rounded-pill" onclick="return confirm('Are you sure you want to delete this credit record? Stock will be adjusted.')">
-                                                <i class="fas fa-trash-alt"></i> Delete
-                                            </a>
+                                            <form action="${deleteUrl}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this credit record? Stock will be adjusted.')">
+                                                <input type="hidden" name="csrf_token" value="${$('meta[name=csrf-token]').attr('content')}"/>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 `);
@@ -1412,9 +1568,12 @@
                                         </td>
                                         <td class="text-left py-2">${nestedTable}</td>
                                         <td>
-                                            <a href="/inventory/debit/delete/${d.id}" class="btn btn-sm btn-outline-danger px-2 rounded-pill" onclick="return confirm('Are you sure you want to delete this debit record? Stock will be restored.')">
-                                                <i class="fas fa-trash-alt"></i> Delete
-                                            </a>
+                                            <form action="/inventory/debit/delete/${d.id}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this debit record? Stock will be restored.')">
+                                                <input type="hidden" name="csrf_token" value="${$('meta[name=csrf-token]').attr('content')}"/>
+                                                <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            </form>
                                         </td>
                                     </tr>
                                 `);

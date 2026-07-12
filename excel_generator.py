@@ -5,22 +5,15 @@ from datetime import date
 
 EXCEL_COLUMNS = [
     'Sr No.',
-    'From Location To\nMR No./ Date\nPSC Pole 8 MTR',
+    'From Location To\nMR No./ Date',
     'Conducto 34mm 2wire',
-    'Conductor 55 mm 3wire',
-    'Conductor 34mm  4wire',
-    'Conductor 34mm  5wire',
+    'Conductor 34mm 5wire',
     'PSC Pole 8 MTR',
     'PSC Pole 10 MTR',
     'Three Hole Parties',
     'V-x arm',
     'Top Fitting',
     'Side Clamp',
-    '11kv Comp Pin Insulator',
-    '11kv Pin Insulator',
-    '11kv G.I. Pin',
-    '11kv Shackle Insulator',
-    '11kv Shackle H/W',
     'Earthing Plate/Coil',
     'G.I. Wire 8 No.',
     'Stay Wire 7/12',
@@ -30,6 +23,22 @@ EXCEL_COLUMNS = [
     'Stay Insulator',
     'Anchor Road',
     'C.C. Block',
+    'U CLAIMP',
+    'LT SHACKLE',
+    'PVC PIPE',
+    'Bolt-2.6"(with nut)',
+    'Bolt-5.0"(with nut)',
+    'Bolt-7.0"(with nut)',
+    'Bolt-11.0"(with nut)',
+    
+    # Remaining ones at the end
+    'Conductor 55 mm 3wire',
+    'Conductor 34mm  4wire',
+    '11kv Comp Pin Insulator',
+    '11kv Pin Insulator',
+    '11kv G.I. Pin',
+    '11kv Shackle Insulator',
+    '11kv Shackle H/W',
     "Angle 9' Fut(65*65*6)",
     "Angle 9' Fut(50*50*6)",
     "Angle 4' Fut",
@@ -37,60 +46,55 @@ EXCEL_COLUMNS = [
     '11kv D.O Angle / Fuse',
     'Transformer 10 KVA',
     'Transformer 25 KVA',
-    'U CLAIMP',
-    'LT SHACKLE',
-    'PVC PIPE',
     'L.A ',
-    'MS Chanal-6 fut',
-    'Bolt-2.6"(with nut)',
-    'Bolt-5.0"(with nut)',
-    'Bolt-7.0"(with nut)',
-    'Bolt-11.0"(with nut)'
+    'MS Chanal-6 fut'
 ]
 
 EXCEL_UNITS = [
     '',
     '',
-    'Km',
-    'Km',
-    'Km',
-    'Km',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'Set.',
-    'No.',
-    'Mt.',
-    'Mt.',
-    'Pair.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'Fut',
-    'Fut',
-    'Fut',
-    'Fut',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.',
-    'No.'
+    'Km', # Conducto 34mm 2wire
+    'Km', # Conductor 34mm 5wire
+    'No.', # PSC Pole 8 MTR
+    'No.', # PSC Pole 10 MTR
+    'No.', # Three Hole Parties
+    'No.', # V-x arm
+    'No.', # Top Fitting
+    'No.', # Side Clamp
+    'No.', # Earthing Plate/Coil
+    'Mt.', # G.I. Wire 8 No.
+    'Mt.', # Stay Wire 7/12
+    'Pair.', # Stay Clamp Pair
+    'No.', # Turn Buckle
+    'No.', # Eye Bolt
+    'No.', # Stay Insulator
+    'No.', # Anchor Road
+    'No.', # C.C. Block
+    'No.', # U CLAIMP
+    'No.', # LT SHACKLE
+    'No.', # PVC PIPE
+    'No.', # Bolt-2.6"(with nut)
+    'No.', # Bolt-5.0"(with nut)
+    'No.', # Bolt-7.0"(with nut)
+    'No.', # Bolt-11.0"(with nut)
+    
+    # Remaining units
+    'Km', # Conductor 55 mm 3wire
+    'Km', # Conductor 34mm  4wire
+    'No.', # 11kv Comp Pin Insulator
+    'No.', # 11kv Pin Insulator
+    'No.', # 11kv G.I. Pin
+    'No.', # 11kv Shackle Insulator
+    'Set.', # 11kv Shackle H/W
+    'Fut', # Angle 9' Fut(65*65*6)
+    'Fut', # Angle 9' Fut(50*50*6)
+    'Fut', # Angle 4' Fut
+    'Fut', # Angle 2'.6'' Fut
+    'No.', # 11kv D.O Angle / Fuse
+    'No.', # Transformer 10 KVA
+    'No.', # Transformer 25 KVA
+    'No.', # L.A 
+    'No.'  # MS Chanal-6 fut
 ]
 
 # Database material name to EXCEL_COLUMNS mapping
@@ -98,11 +102,11 @@ DB_TO_EXCEL_MAP = {
     'PSC Pole 8 MTR': 'PSC Pole 8 MTR',
     'PSC Pole 10 MTR': 'PSC Pole 10 MTR',
     'Conducto 34mm 2wire': 'Conducto 34mm 2wire',
+    'Conductor 34mm 5wire': 'Conductor 34mm 5wire',
     'Conductor 34mm  4wire': 'Conductor 34mm  4wire',
     'Conductor 55 mm 3wire': 'Conductor 55 mm 3wire',
     'Transformer 10 KVA': 'Transformer 10 KVA',
     'Transformer 25 KVA': 'Transformer 25 KVA',
-    'Transformer 63 KVA': 'Transformer 25 KVA',  # Fallback map to nearest
     'Three Hole Parties': 'Three Hole Parties',
     'V-x arm': 'V-x arm',
     'Top Fitting': 'Top Fitting',
@@ -542,7 +546,8 @@ def generate_release_excel(ro):
                     ws.row(r).height = 360
                     
                     ws.write(r, 0, '', cell_style)
-                    ws.write(r, 1, str(p_name), cell_style)
+                    val_p_name = 'ex' if str(p_name).upper() == 'EX' else str(p_name)
+                    ws.write(r, 1, val_p_name, cell_style)
 
                     for col_idx, col_name in enumerate(EXCEL_COLUMNS[2:], 2):
                         val = 0.0
