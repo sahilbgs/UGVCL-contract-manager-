@@ -161,3 +161,6 @@ Thumbs.db
 # Uploads directory
 uploads/
 
+# Planning & IDE files
+implementation_plan.md
+
