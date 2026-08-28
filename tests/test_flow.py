@@ -2,8 +2,9 @@ import os
 import pytest
 from decimal import Decimal
 from datetime import date
-from models import db, User, WorkOrder, ReleaseOrder, Material, MaterialReceipt, MaterialReceiptItem, CreditReceipt, DocumentVault, Farmer, FarmerMaterial
-from app import app
+from app.models import db, User, WorkOrder, ReleaseOrder, Material, MaterialReceipt, MaterialReceiptItem, CreditReceipt, DocumentVault, Farmer, FarmerMaterial
+from app import create_app
+app = create_app('testing')
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 SAMPLES_DIR = os.path.join(TEST_DIR, 'samples')
@@ -56,7 +57,7 @@ def client():
             db.session.commit()
             
             # Seed material mappings database table for the test run
-            from app import seed_materials
+            from app.cli import seed_materials
             seed_materials()
         yield client
 
@@ -76,7 +77,7 @@ def login_as_manager(client):
 
 
 def test_ocr_parsing():
-    from ocr_parser import parse_gate_pass_text
+    from app.services.ocr_parser import parse_gate_pass_text
     
     # Test raw text parsing of gate pass
     mock_gp_text = """
@@ -310,7 +311,7 @@ def test_inventory_debit_flow(client):
     with app.app_context():
         login_as_admin(client)
         # Setup materials
-        from models import Farmer
+        from app.models import Farmer
         mat = Material.query.filter_by(name='PSC Pole 8 MTR').first()
         if not mat:
             mat = Material(name='PSC Pole 8 MTR', unit='Nos', opening_stock=100.0)
@@ -560,7 +561,7 @@ def test_farmer_pdf_upload_and_save_flow(client):
         assert save_res.get_json()['success'] is True
         
         # Verify farmers saved in database
-        from models import Farmer, FarmerMaterial
+        from app.models import Farmer, FarmerMaterial
         farmers_in_db = Farmer.query.filter_by(release_order_id=ro_id).all()
         assert len(farmers_in_db) == len(res_json['farmers'])
 
@@ -1215,7 +1216,7 @@ def test_multiple_farmers_grouping_excel(client):
 
 
 def test_delete_release_order(client):
-    from models import WorkOrder, ReleaseOrder
+    from app.models import WorkOrder, ReleaseOrder
     
     login_as_admin(client)
     
@@ -1261,9 +1262,8 @@ def test_delete_release_order(client):
 
 def test_item_code_matching(client):
     """Verify that materials from farmer list are matched to inventory by item code first, not name."""
-    from models import db, Material, Farmer, FarmerMaterial, ReleaseOrder, WorkOrder
+    from app.models import db, Material, Farmer, FarmerMaterial, ReleaseOrder, WorkOrder
     from decimal import Decimal
-    from app import app
     
     # Log in as admin first
     login_as_admin(client)
@@ -1305,7 +1305,7 @@ def test_item_code_matching(client):
         db.session.add(m)
         
         # Add dynamic DB mapping for this test
-        from models import MaterialMapping
+        from app.models import MaterialMapping
         db.session.add(MaterialMapping(alias="test conductor 999", item_code="9999999999"))
         db.session.commit()
         
@@ -1348,3 +1348,80 @@ def test_item_code_matching(client):
         assert fm.material_name == "ALL ALLUMINIUM ALLOY CONDUCTOR 34 SQMM WEASEL"
         assert fm.item_code == "9999999999"
         assert fm.qty_required == Decimal('1500.0')
+
+
+def test_derive_ro_status_mixed_completed_disputed():
+    from app.services.status import derive_ro_status
+    class DummyFarmer:
+        def __init__(self, status):
+            self.status = status
+    class DummyRO:
+        def __init__(self, farmers):
+            self.farmers = farmers
+            self.status = 'Pending'
+
+    # Mix of Completed and Disputed farmers -> Completed
+    ro = DummyRO([DummyFarmer('Completed'), DummyFarmer('Disputed')])
+    assert derive_ro_status(ro) == 'Completed'
+
+
+def test_work_order_balance_recalculation_on_delete(client):
+    with app.app_context():
+        login_as_admin(client)
+        wo = WorkOrder(
+            work_order_no='WO-BAL-TEST',
+            po_no='POBAL123',
+            contract_amount=Decimal('100000.00'),
+            balance_amount=Decimal('100000.00')
+        )
+        db.session.add(wo)
+        db.session.commit()
+
+        ro1 = ReleaseOrder(
+            work_order_id=wo.id, release_no='1', po_no='POBAL123',
+            release_amount=Decimal('80000.00'), remaining_amount=Decimal('80000.00')
+        )
+        ro2 = ReleaseOrder(
+            work_order_id=wo.id, release_no='2', po_no='POBAL123',
+            release_amount=Decimal('50000.00'), remaining_amount=Decimal('50000.00')
+        )
+        db.session.add(ro1)
+        db.session.add(ro2)
+        from app.work_orders.routes import recalculate_wo_balance
+        recalculate_wo_balance(wo)
+        db.session.commit()
+
+        # Balance floored at 0 (100,000 - 130,000 = 0)
+        assert float(wo.balance_amount) == 0.0
+
+        # Delete RO2 (50,000) -> Balance should be 100,000 - 80,000 = 20,000
+        client.post(f'/work-orders/release-order/delete/{ro2.id}')
+        db.session.refresh(wo)
+        assert float(wo.balance_amount) == 20000.00
+
+
+def test_latest_debit_no_double_counting(client):
+    with app.app_context():
+        m = Material.query.filter_by(name='PSC Pole 8 MTR').first()
+        if not m:
+            m = Material(name='PSC Pole 8 MTR', unit='Nos', opening_stock=100.0)
+            db.session.add(m)
+            db.session.commit()
+
+        farmer = Farmer(
+            sr_number='SR-NO-DOUBLE', applicant_name='No Double Farmer',
+            status='Completed', date=date.today()
+        )
+        db.session.add(farmer)
+        db.session.flush()
+
+        fm = FarmerMaterial(
+            farmer_id=farmer.id, material_name='PSC Pole 8 MTR',
+            qty_issued=Decimal('10.0'), qty_consumed=Decimal('10.0')
+        )
+        db.session.add(fm)
+        db.session.commit()
+
+        assert '-10.0 Nos' in m.latest_debit
+        assert m.latest_debit_amount == '-10.0 Nos'
+

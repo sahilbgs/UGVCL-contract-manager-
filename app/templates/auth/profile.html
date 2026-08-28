@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Profile Settings - UGVCL Contract Manager{% endblock %}
+
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column: User Summary Card -->
+    <div class="col-lg-4 mb-4">
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <div class="card-body text-center py-5" style="background: linear-gradient(135deg, #0f2027, #203a43, #2c5364); color: #fff;">
+                <div class="position-relative d-inline-block mb-3">
+                {% if current_user.profile_pic_url %}
+                    <img src="{{ current_user.profile_pic_url }}" alt="Avatar" class="img-thumbnail rounded-circle" style="width: 120px; height: 120px; object-fit: cover; border: 4px solid rgba(255,255,255,0.2);">
+                {% else %}
+                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-warning text-navy mx-auto" style="width: 120px; height: 120px; font-size: 3rem; font-weight: bold; border: 4px solid rgba(255,255,255,0.2);">
+                        {{ (current_user.full_name or current_user.username)[0]|upper }}
+                    </div>
+                {% endif %}
+            </div>
+            <h4 class="font-weight-bold mb-1">{{ current_user.full_name or 'User' }}</h4>
+            <p class="text-warning mb-2"><i class="fas fa-user-shield mr-1"></i> {{ current_user.role|upper }}</p>
+            <span class="badge bg-light text-navy px-3 py-1 font-weight-medium text-xs">@{{ current_user.username }}</span>
+        </div>
+        <div class="card-footer bg-white border-0 p-3">
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-danger w-100 font-weight-bold py-2 shadow-sm">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Log Out
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Settings Tabs -->
+    <div class="col-lg-8">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom p-0">
+                <ul class="nav nav-tabs nav-fill" id="profileTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active py-3 font-weight-bold text-navy" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button" role="tab" aria-controls="personal" aria-selected="true">
+                            <i class="fas fa-user-edit mr-1"></i> Personal Info
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link py-3 font-weight-bold text-navy" id="security-tab" data-bs-toggle="tab" data-bs-target="#security" type="button" role="tab" aria-controls="security" aria-selected="false">
+                            <i class="fas fa-key mr-1"></i> Password & Security
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body p-4">
+                <div class="tab-content" id="profileTabsContent">
+                    <!-- Personal Info Tab -->
+                    <div class="tab-pane fade show active" id="personal" role="tabpanel" aria-labelledby="personal-tab">
+                        <form id="profileInfoForm" method="POST" action="{{ url_for('auth.update_profile') }}" enctype="multipart/form-data">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
+                            <div class="mb-4 text-center">
+                                <h6 class="text-navy font-weight-bold text-left mb-3"><i class="fas fa-image mr-1 text-warning"></i>Profile Picture</h6>
+                                <div class="d-flex align-items-center flex-column flex-sm-row text-center text-sm-left gap-3">
+                                    <div class="avatar-preview-wrapper mb-2 mb-sm-0">
+                                        {% if current_user.profile_pic_url %}
+                                            <img id="avatarPreview" src="{{ current_user.profile_pic_url }}" alt="Preview" class="rounded-circle shadow-sm" style="width: 80px; height: 80px; object-fit: cover;">
+                                        {% else %}
+                                            <div id="avatarPlaceholder" class="rounded-circle bg-light d-flex align-items-center justify-content-center text-navy shadow-sm mx-auto mx-sm-0" style="width: 80px; height: 80px; font-size: 2rem;">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                            <img id="avatarPreview" src="" alt="Preview" class="rounded-circle shadow-sm d-none" style="width: 80px; height: 80px; object-fit: cover;">
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <label for="profilePicInput" class="btn btn-navy btn-sm font-weight-bold px-3 mb-1">
+                                            <i class="fas fa-upload mr-1"></i> Choose New Photo
+                                        </label>
+                                        <input type="file" id="profilePicInput" name="profile_pic" class="d-none" accept="image/*">
+                                        <p class="text-muted text-xs mb-0">Supported files: JPG, PNG, GIF. Max file size: 2MB.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h6 class="text-navy font-weight-bold mb-3"><i class="fas fa-id-card mr-1 text-warning"></i>Account Details</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label font-weight-bold text-navy text-sm">Username</label>
+                                    <input type="text" class="form-control" value="{{ current_user.username }}" disabled style="background-color: #f8f9fa;">
+                                    <small class="text-muted text-xs">Username cannot be changed.</small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="fullNameInput" class="form-label font-weight-bold text-navy text-sm">Full Name</label>
+                                    <input type="text" class="form-control" id="fullNameInput" name="full_name" value="{{ current_user.full_name or '' }}" placeholder="Enter your full name" required>
+                                </div>
+                            </div>
+
+                            <div class="text-right mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-navy font-weight-bold px-4 py-2">
+                                    <i class="fas fa-save mr-1"></i> Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Password Security Tab -->
+                    <div class="tab-pane fade" id="security" role="tabpanel" aria-labelledby="security-tab">
+                        <form id="profileSecurityForm" method="POST" action="{{ url_for('auth.update_password') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
+                            <h6 class="text-navy font-weight-bold mb-3"><i class="fas fa-shield-alt mr-1 text-warning"></i>Change Password</h6>
+                            
+                            <div class="mb-3">
+                                <label for="currentPassword" class="form-label font-weight-bold text-navy text-sm">Current Password</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light text-muted"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="currentPassword" name="current_password" placeholder="Enter current password" required>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="newPassword" class="form-label font-weight-bold text-navy text-sm">New Password</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted"><i class="fas fa-key"></i></span>
+                                        <input type="password" class="form-control" id="newPassword" name="new_password" placeholder="Min. 6 characters" required minlength="6">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="confirmPassword" class="form-label font-weight-bold text-navy text-sm">Confirm New Password</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light text-muted"><i class="fas fa-check-double"></i></span>
+                                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password" placeholder="Verify new password" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-right mt-4 pt-3 border-top">
+                                <button type="submit" class="btn btn-navy font-weight-bold px-4 py-2">
+                                    <i class="fas fa-lock mr-1"></i> Update Password
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    // Live preview for profile picture selection
+    $('#profilePicInput').on('change', function() {
+        var file = this.files[0];
+        if (file) {
+            // Check size (2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert("File size exceeds the 2MB limit!");
+                this.value = '';
+                return;
+            }
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                if ($('#avatarPreview').length) {
+                    $('#avatarPreview').attr('src', e.target.result).removeClass('d-none');
+                }
+                if ($('#avatarPlaceholder').length) {
+                    $('#avatarPlaceholder').addClass('d-none');
+                }
+            }
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Client-side passwords match validation
+    $('#profileSecurityForm').on('submit', function(e) {
+        var newPass = $('#newPassword').val();
+        var confPass = $('#confirmPassword').val();
+        
+        if (newPass !== confPass) {
+            e.preventDefault();
+            alert("New passwords do not match!");
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

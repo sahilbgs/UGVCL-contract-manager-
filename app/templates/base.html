@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+    <meta name="theme-color" content="#002B49">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="description" content="UGVCL Contract Management Portal — Work Orders, Inventory & Farmer Material Tracking">
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined else '' }}">
+    <title>{% block title %}UGVCL Portal Contract Manager{% endblock %}</title>
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='dist/img/icon-192.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='dist/img/icon-192.png') }}">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- AdminLTE CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+    <style>
+        /* Splash Screen Style */
+        .splash-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #002B49;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999999;
+            opacity: 1;
+            transition: opacity 0.5s cubic-bezier(0.25, 1, 0.5, 1), visibility 0.5s;
+            overflow: hidden;
+        }
+        .splash-content {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .splash-ring-outer {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            animation: splashScaleIn 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .splash-ring-inner {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            right: -5px;
+            bottom: -5px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: #fb8500;
+            border-bottom-color: #ffb703;
+            animation: splashSpin 2s linear infinite;
+            box-shadow: 0 0 15px rgba(251, 133, 0, 0.4);
+        }
+        .splash-logo {
+            width: 110px;
+            height: 110px;
+            object-fit: contain;
+            border-radius: 50%;
+            background-color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            animation: logoPulse 2s ease-in-out infinite alternate;
+        }
+        .splash-title {
+            color: #ffffff;
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            margin-top: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            opacity: 0;
+            animation: splashFadeUp 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards 0.3s;
+        }
+        .splash-subtitle {
+            color: #ffb703;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: 4px;
+            margin-bottom: 30px;
+            opacity: 0;
+            animation: splashFadeUp 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards 0.5s;
+        }
+        .splash-progress {
+            width: 140px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            position: relative;
+            opacity: 0;
+            animation: fadeIn 0.4s ease forwards 0.7s;
+        }
+        .splash-progress-bar {
+            position: absolute;
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, #ffb703, #fb8500);
+            border-radius: 2px;
+            animation: progressMoving 1.5s infinite ease-in-out;
+        }
+        @keyframes splashScaleIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes splashSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes logoPulse {
+            0% { transform: scale(0.96); box-shadow: 0 4px 10px rgba(251, 133, 0, 0.2); }
+            100% { transform: scale(1.04); box-shadow: 0 4px 25px rgba(251, 133, 0, 0.6); }
+        }
+        @keyframes splashFadeUp {
+            0% { transform: translateY(15px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        @keyframes progressMoving {
+            0% { left: -40%; }
+            50% { left: 100%; width: 50%; }
+            100% { left: 100%; width: 0%; }
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+
+</head>
+<body class="hold-transition sidebar-mini layout-fixed sidebar-collapse">
+
+<!-- Splash Screen Overlay -->
+<div id="splash-screen" class="splash-container">
+    <div class="splash-content">
+        <div class="splash-ring-outer">
+            <div class="splash-ring-inner"></div>
+            <img src="{{ url_for('static', filename='dist/img/logo.png') }}" alt="UGVCL Logo" class="splash-logo">
+        </div>
+        <div class="splash-title">UGVCL</div>
+        <div class="splash-subtitle">CONTRACTOR APP</div>
+        <div class="splash-progress">
+            <div class="splash-progress-bar"></div>
+        </div>
+    </div>
+</div>
+
+<div class="wrapper">
+
+
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <!-- Left navbar links -->
+        <ul class="navbar-nav">
+            <li class="nav-item d-none d-md-inline-block">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars text-navy"></i></a>
+            </li>
+            <li class="nav-item d-md-none">
+                <a href="{{ url_for('inventory.list_inventory') }}" class="nav-link py-2 d-flex align-items-center">
+                    <img src="{{ url_for('static', filename='dist/img/logo.png') }}" alt="UGVCL Logo" class="img-circle mr-1" style="max-height: 24px; background: white; padding: 1px;">
+                    <span class="font-weight-bold text-navy" style="font-size: 0.9rem;">UGVCL</span>
+                </a>
+            </li>
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="{{ url_for('inventory.list_inventory') }}" class="nav-link font-weight-bold">Home</a>
+            </li>
+        </ul>
+
+        <!-- Right navbar links -->
+        <ul class="navbar-nav ml-auto align-items-center">
+            <li class="nav-item dropdown user-menu">
+                <a href="#" class="nav-link dropdown-toggle d-flex align-items-center" data-toggle="dropdown">
+                    {% if current_user.is_authenticated and current_user.profile_pic %}
+                        <img src="{{ current_user.profile_pic }}" class="user-image img-circle elevation-1 mr-2" alt="User Image" style="width: 28px; height: 28px; object-fit: cover; border-radius: 50%;">
+                    {% else %}
+                        <i class="fas fa-user-circle fa-lg text-navy mr-2"></i>
+                    {% endif %}
+                    <span class="d-none d-md-inline font-weight-bold">{{ current_user.full_name or current_user.username or 'Admin' }}</span>
+                </a>
+                <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-right shadow border-0">
+                    <!-- User image -->
+                    <li class="user-header bg-navy text-white text-center py-4">
+                        {% if current_user.is_authenticated and current_user.profile_pic_url %}
+                            <img src="{{ current_user.profile_pic_url }}" class="img-circle elevation-2 mb-2" alt="User Image" style="width: 75px; height: 75px; object-fit: cover; border-radius: 50%;">
+                        {% else %}
+                            <i class="fas fa-user-shield fa-3x mb-2 text-warning"></i>
+                        {% endif %}
+                        <p class="mb-0 font-weight-bold">
+                            {{ current_user.full_name or current_user.username or 'Admin' }}
+                        </p>
+                        <small>{{ (current_user.role or 'manager')|upper }} - UGVCL Portal</small>
+                    </li>
+                    <!-- Menu Footer-->
+                    <li class="user-footer bg-light d-flex justify-content-between p-3">
+                        <a href="{{ url_for('auth.profile') }}" class="btn btn-outline-secondary btn-flat rounded">Profile</a>
+                        <a href="{{ url_for('auth.logout') }}" class="btn btn-danger btn-flat rounded">Sign out</a>
+                    </li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+    <!-- /.navbar -->
+
+    <!-- Main Sidebar Container (Desktop only) -->
+    <aside class="main-sidebar sidebar-dark-navy elevation-4">
+        <!-- Brand Logo -->
+        <a href="{{ url_for('inventory.list_inventory') }}" class="brand-link">
+            <img src="{{ url_for('static', filename='dist/img/logo.png') }}" alt="UGVCL Logo" class="brand-image img-circle">
+            <span class="brand-text font-weight-bold text-warning letter-spacing-1">UGVCL PORTAL</span>
+        </a>
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Sidebar Menu -->
+            <nav class="mt-4">
+                <ul class="nav nav-pills nav-sidebar flex-column nav-child-indent" data-widget="treeview" role="menu" data-accordion="false">
+                    <li class="nav-header">CONTRACT MANAGEMENT</li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('work_orders.work_orders_list') }}" class="nav-link {% if request.endpoint == 'work_orders.work_orders_list' or request.endpoint == 'work_orders.work_order_view' or request.endpoint == 'work_orders.work_order_details' %}active{% endif %}">
+                            <i class="nav-icon fas fa-file-contract"></i>
+                            <p>Work Orders</p>
+                        </a>
+                    </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a href="{{ url_for('manager.dashboard') }}" class="nav-link {% if request.endpoint == 'manager.dashboard' or request.endpoint == 'manager.sub_order_detail' or request.endpoint == 'manager.active_farmers' %}active{% endif %}">
+                            <i class="nav-icon fas fa-tasks"></i>
+                            <p>Manager Dashboard</p>
+                        </a>
+                    </li>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <li class="nav-header">MATERIAL & INVENTORY</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('inventory.list_inventory') }}" class="nav-link {% if request.endpoint == 'inventory.list_inventory' %}active{% endif %}">
+                            <i class="nav-icon fas fa-boxes-stacked"></i>
+                            <p>Main Inventory</p>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="nav-header">ACCOUNT</li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.profile') }}" class="nav-link {% if request.endpoint == 'auth.profile' %}active{% endif %}">
+                            <i class="nav-icon fas fa-user-circle"></i>
+                            <p>My Profile</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="{{ url_for('auth.logout') }}" class="nav-link">
+                            <i class="nav-icon fas fa-sign-out-alt text-danger"></i>
+                            <p>Sign Out</p>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            <!-- /.sidebar-menu -->
+        </div>
+        <!-- /.sidebar -->
+    </aside>
+
+    <!-- Content Wrapper. Contains page content -->
+    <div class="content-wrapper">
+        <!-- Content Header (Page header) -->
+        <div class="content-header">
+            <div class="container-fluid">
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }} alert-dismissible fade show border-0 shadow-sm" role="alert">
+                                <strong>{% if category == 'success' %}<i class="fas fa-check-circle mr-2"></i>{% else %}<i class="fas fa-exclamation-circle mr-2"></i>{% endif %}</strong> {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        <!-- /.content-header -->
+
+        <!-- Main content -->
+        <section class="content">
+            <div class="container-fluid">
+                {% block content %}{% endblock %}
+            </div><!-- /.container-fluid -->
+        </section>
+        <!-- /.content -->
+    </div>
+    <!-- /.content-wrapper -->
+
+    <footer class="main-footer">
+        <div class="footer-container">
+            <div class="footer-left">
+                <span>&copy; 2026 <a href="#" class="footer-link">UGVCL Contract Manager</a>. All rights reserved.</span>
+            </div>
+            <div class="footer-center d-none d-md-flex">
+                <span class="status-indicator">
+                    <span class="status-dot"></span>
+                    System Status: Operational
+                </span>
+            </div>
+            <div class="footer-right">
+                <span class="footer-version"><b>Version</b> 1.0.0</span>
+                <span class="footer-separator d-none d-sm-inline">|</span>
+                <span class="footer-credit d-none d-sm-inline">Designed for UGVCL Contractors</span>
+            </div>
+        </div>
+    </footer>
+</div>
+<!-- ./wrapper -->
+
+<!-- Mobile Bottom Navigation -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav">
+    <div class="nav-items">
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <a href="{{ url_for('work_orders.work_orders_list') }}" class="nav-tab {% if request.endpoint == 'work_orders.work_orders_list' or request.endpoint == 'work_orders.work_order_view' or request.endpoint == 'work_orders.work_order_details' %}active{% endif %}" id="nav-work-orders">
+            <i class="fas fa-file-contract"></i>
+            <span>Work Orders</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('manager.dashboard') }}" class="nav-tab {% if request.endpoint == 'manager.dashboard' or request.endpoint == 'manager.sub_order_detail' or request.endpoint == 'manager.active_farmers' %}active{% endif %}" id="nav-manager">
+            <i class="fas fa-tasks"></i>
+            <span>Manager</span>
+        </a>
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+        <a href="{{ url_for('inventory.list_inventory') }}" class="nav-tab {% if request.endpoint == 'inventory.list_inventory' %}active{% endif %}" id="nav-inventory">
+            <i class="fas fa-boxes-stacked"></i>
+            <span>Inventory</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('auth.profile') }}" class="nav-tab {% if request.endpoint == 'auth.profile' %}active{% endif %}" id="nav-profile">
+            {% if current_user.is_authenticated and current_user.profile_pic_url %}
+                <img src="{{ current_user.profile_pic_url }}" alt="Profile" style="width: 20px; height: 20px; object-fit: cover; border-radius: 50%; display: block; margin: 0 auto 3px; border: 1px solid rgba(0,0,0,0.1);">
+            {% else %}
+                <i class="fas fa-user-circle"></i>
+            {% endif %}
+            <span>Profile</span>
+        </a>
+    </div>
+</nav>
+
+<!-- PWA Install Banner -->
+<div class="pwa-install-banner" id="pwaInstallBanner">
+    <div class="install-content">
+        <div class="install-icon">
+            <i class="fas fa-bolt fa-lg text-warning"></i>
+        </div>
+        <div class="install-text">
+            <strong>Install UGVCL Manager</strong>
+            <small>Add to home screen for quick access</small>
+        </div>
+        <button class="btn-install" id="pwaInstallBtn">Install</button>
+        <button class="btn-dismiss" id="pwaInstallDismiss">&times;</button>
+    </div>
+</div>
+
+<!-- jQuery -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $.ajaxSetup({
+    beforeSend: function(xhr, settings) {
+      if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+        var token = $('meta[name="csrf-token"]').attr('content');
+        if (token) {
+          xhr.setRequestHeader("X-CSRFToken", token);
+        }
+      }
+    }
+  });
+</script>
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE App -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+  // ── Service Worker Registration ──
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/static/sw.js').then(reg => {
+        console.log('ServiceWorker registered:', reg.scope);
+      }).catch(err => {
+        console.log('ServiceWorker registration failed:', err);
+      });
+    });
+  }
+
+  // ── PWA Install Prompt ──
+  let deferredPrompt;
+  const installBanner = document.getElementById('pwaInstallBanner');
+  const installBtn = document.getElementById('pwaInstallBtn');
+  const dismissBtn = document.getElementById('pwaInstallDismiss');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // Show install banner if not previously dismissed
+    if (!localStorage.getItem('pwa-install-dismissed')) {
+      installBanner.style.display = 'block';
+    }
+  });
+
+  if (installBtn) {
+    installBtn.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        installBanner.style.display = 'none';
+      }
+    });
+  }
+
+  if (dismissBtn) {
+    dismissBtn.addEventListener('click', () => {
+      installBanner.style.display = 'none';
+      localStorage.setItem('pwa-install-dismissed', 'true');
+    });
+  }
+
+  // ── Auto-collapse sidebar on mobile ──
+  $(document).ready(function() {
+    if (window.innerWidth <= 768) {
+      $('body').addClass('sidebar-collapse');
+    }
+  });
+
+  // Splash screen handler
+  document.addEventListener("DOMContentLoaded", function() {
+    const splash = document.getElementById("splash-screen");
+    if (splash) {
+      const hasShown = sessionStorage.getItem('splash_shown');
+      if (hasShown) {
+        splash.style.display = "none";
+      } else {
+        sessionStorage.setItem('splash_shown', 'true');
+        setTimeout(function() {
+          splash.style.opacity = "0";
+          setTimeout(function() {
+            splash.style.display = "none";
+          }, 500);
+        }, 1800);
+      }
+    }
+  });
+</script>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

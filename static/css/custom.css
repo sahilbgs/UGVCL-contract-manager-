@@ -29,6 +29,66 @@ body {
     color: var(--navy-dark);
     -webkit-tap-highlight-color: transparent;
     overscroll-behavior-y: contain;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.wrapper {
+    min-height: 100vh;
+}
+
+.main-header {
+    border-bottom: 1px solid rgba(0, 43, 73, 0.08);
+}
+
+.content-wrapper {
+    min-height: calc(100vh - 57px - 60px);
+    background-color: var(--bg-light);
+}
+
+.content-header {
+    padding: 0.75rem 1rem 0;
+}
+
+.content {
+    padding: 0.5rem 0.5rem 2rem;
+}
+
+.content .container-fluid,
+.content-header .container-fluid {
+    padding-left: 0.6rem;
+    padding-right: 0.6rem;
+}
+
+/* Footer base style is defined in the Premium Footer section at the end of the file */
+
+.card {
+    border-radius: 14px !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04) !important;
+    transition: transform 0.3s, box-shadow 0.3s;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.card-header,
+.card-body {
+    padding: 0.9rem 1rem;
+}
+
+.table-responsive {
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.form-control,
+.form-select,
+.input-group-text,
+.btn {
+    border-radius: 10px;
+}
+
+.nav-link p {
+    margin-bottom: 0;
 }
 
 /* =====================================================
@@ -102,12 +162,6 @@ body {
 /* =====================================================
    PREMIUM UI ELEMENTS
    ===================================================== */
-.card {
-    border-radius: 15px !important;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.04) !important;
-    transition: transform 0.3s, box-shadow 0.3s;
-}
-
 .card:hover {
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
 }
@@ -245,9 +299,11 @@ button[aria-expanded="false"] .hide-text {
     left: 0;
     right: 0;
     z-index: 1050;
-    background: #ffffff;
-    border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border-top: 1px solid rgba(0, 43, 73, 0.08) !important;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05) !important;
     padding-bottom: var(--safe-area-bottom);
 }
 
@@ -766,3 +822,160 @@ button[aria-expanded="false"] .hide-text {
         padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 12px) !important;
     }
 }
+
+/* =====================================================
+   PREMIUM SIDEBAR BRAND & FOOTER STYLES
+   ===================================================== */
+
+/* Sidebar Brand Logo Styling */
+.main-sidebar .brand-link {
+    display: flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 0.75rem 1rem !important;
+    height: 57px;
+    background-color: var(--navy-dark) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.main-sidebar .brand-link img.brand-image {
+    max-height: 32px !important;
+    width: 32px !important;
+    height: 32px !important;
+    object-fit: contain;
+    background: #ffffff;
+    padding: 2px;
+    border-radius: 50%;
+    margin-right: 10px !important;
+    margin-left: 0 !important;
+    margin-top: 0 !important;
+    transition: all 0.3s ease;
+    float: none !important;
+}
+
+.main-sidebar .brand-link .brand-text {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: var(--yellow-accent) !important;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    transition: opacity 0.3s ease, width 0.3s ease;
+}
+
+/* Sidebar collapsed overrides */
+.sidebar-collapse .main-sidebar .brand-link {
+    padding: 0.75rem 0 !important;
+    justify-content: center !important;
+}
+
+.sidebar-collapse .main-sidebar .brand-link img.brand-image {
+    margin-right: 0 !important;
+}
+
+.sidebar-collapse .main-sidebar .brand-link .brand-text {
+    opacity: 0;
+    width: 0;
+    display: none;
+}
+
+/* Premium Footer Styles */
+.main-footer {
+    background: linear-gradient(135deg, var(--navy-dark) 0%, var(--navy-blue) 100%) !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    padding: 1.25rem 1.5rem !important;
+    font-size: 0.8rem !important;
+    transition: all 0.3s ease;
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.footer-left .footer-link {
+    color: var(--yellow-accent);
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.2s ease, text-shadow 0.2s ease;
+}
+
+.footer-left .footer-link:hover {
+    color: var(--orange-accent);
+    text-shadow: 0 0 8px rgba(251, 133, 0, 0.3);
+}
+
+.footer-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-indicator {
+    background: rgba(42, 157, 143, 0.1);
+    border: 1px solid rgba(42, 157, 143, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #a3e635;
+    font-weight: 500;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #a3e635;
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px #a3e635;
+    animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.footer-version {
+    font-weight: 500;
+}
+
+.footer-separator {
+    color: rgba(255, 255, 255, 0.15);
+}
+
+.footer-credit {
+    font-size: 0.75rem;
+    opacity: 0.8;
+}
+
+@keyframes pulseGlow {
+    0% {
+        transform: scale(0.9);
+        box-shadow: 0 0 4px rgba(163, 230, 53, 0.5);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 0 10px rgba(163, 230, 53, 0.9);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0.9);
+        box-shadow: 0 0 4px rgba(163, 230, 53, 0.5);
+        opacity: 0.6;
+    }
+}
+
+/* Glassmorphism Mobile Bottom Navigation is styled at line 295 and toggled to display: block in media query */

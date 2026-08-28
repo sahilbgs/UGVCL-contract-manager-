@@ -1,0 +1,1195 @@
+{% extends "base.html" %}
+
+{% block title %}Active Farmers Material Sheet | Sub-WO #{{ ro.release_no }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .bg-navy-gradient {
+        background: linear-gradient(135deg, #001f3f 0%, #003366 100%);
+    }
+    .farmer-summary-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px 16px;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .farmer-summary-card .count {
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
+    }
+    .mat-input {
+        width: 85px !important;
+        font-size: 0.82rem;
+        text-align: center;
+        font-weight: 700;
+        padding: 4px;
+        border-radius: 4px;
+        border: 1px solid #cbd5e1;
+    }
+    .mat-input:focus {
+        border-color: #001f3f;
+        box-shadow: 0 0 0 2px rgba(0,31,63,0.15);
+    }
+    .sticky-sr {
+        position: sticky;
+        left: 0;
+        background: #ffffff;
+        z-index: 10;
+        min-width: 45px;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+    .sticky-farmer {
+        position: sticky;
+        left: 45px;
+        background: #ffffff;
+        z-index: 10;
+        min-width: 90px;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+    }
+    .table-grid-scroll th.sticky-mat-header {
+        position: sticky;
+        top: 0;
+        z-index: 15;
+        background: #f8fafc;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .table-grid-scroll th.sticky-top-left-1 {
+        position: sticky;
+        top: 0;
+        left: 0;
+        z-index: 20;
+        background: #f1f5f9;
+    }
+    .table-grid-scroll th.sticky-top-left-2 {
+        position: sticky;
+        top: 0;
+        left: 45px;
+        z-index: 20;
+        background: #f1f5f9;
+    }
+    .btn-save-pill {
+        border-radius: 50rem;
+        padding: 8px 24px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    /* ── Mobile Overrides ── */
+    @media (max-width: 768px) {
+        .btn-save-pill {
+            position: sticky;
+            bottom: 70px;
+            z-index: 100;
+            width: 100%;
+        }
+        .mat-input {
+            width: 70px !important;
+        }
+        .farmer-summary-card {
+            flex-wrap: wrap;
+        }
+    }
+
+    /* ── Floating Toasts ── */
+    #toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        pointer-events: none;
+    }
+    .custom-toast {
+        pointer-events: auto;
+        background: rgba(15, 23, 42, 0.95);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 4px solid #10b981;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        color: #ffffff;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 300px;
+        transform: translateY(-20px);
+        opacity: 0;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .custom-toast.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    .custom-toast.danger {
+        border-left-color: #ef4444;
+    }
+    .custom-toast .toast-close {
+        margin-left: auto;
+        cursor: pointer;
+        color: rgba(255, 255, 255, 0.6);
+        background: none;
+        border: none;
+        font-size: 1.1rem;
+        padding: 0;
+        line-height: 1;
+        transition: color 0.2s;
+    }
+    .custom-toast .toast-close:hover {
+        color: #ffffff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set pending_count_ns = namespace(count=0) %}
+{% for f in farmers %}
+    {% if f.status == 'Pending' %}
+        {% set pending_count_ns.count = pending_count_ns.count + 1 %}
+    {% endif %}
+{% endfor %}
+
+{% set grid_ns = namespace(has_grid_farmers=false) %}
+{% for f in farmers %}
+    {% if f.status != 'Pending' %}
+        {% set grid_ns.has_grid_farmers = true %}
+    {% endif %}
+{% endfor %}
+
+{% if grid_ns.has_grid_farmers %}
+    <!-- Active Farmers Directory Card / Table -->
+    <div class="card shadow-sm border-0 mb-4" id="active-farmers-directory-card" style="border-radius: 12px; overflow: hidden;">
+        <div class="card-header bg-light py-3 px-4 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-navy" style="font-size: 1.05rem;">
+                <i class="fas fa-list-ul mr-2 text-primary"></i>Activated Farmers Directory List
+            </h6>
+            <button type="button" class="btn btn-xs btn-navy font-weight-bold" onclick="filterFarmerView('all')">
+                <i class="fas fa-table mr-1 text-warning"></i>View Full Consumption Sheet (All Active Farmers)
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <!-- Desktop Table (>= 768px) -->
+            <div class="table-responsive d-none d-md-block">
+                <table class="table table-hover mb-0 align-middle text-sm">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:8%;" class="text-center py-2">#</th>
+                            <th style="width:42%;" class="py-2">Farmer Name</th>
+                            <th style="width:25%;" class="py-2">Village</th>
+                            <th style="width:25%;" class="py-2">SR Number</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set active_idx_ns = namespace(idx=0) %}
+                        {% for f in farmers %}
+                            {% if f.status != 'Pending' %}
+                                {% set active_idx_ns.idx = active_idx_ns.idx + 1 %}
+                                <tr style="cursor: pointer;" onclick="filterFarmerView({{ f.id }})" title="Click to view consumption table for {{ f.applicant_name }}">
+                                    <td class="text-center font-weight-bold text-muted py-2.5">{{ active_idx_ns.idx }}</td>
+                                    <td class="py-2.5">
+                                        <strong class="text-navy text-uppercase" style="font-size: 0.88rem;">{{ f.applicant_name }}</strong>
+                                        <small class="text-primary d-block font-weight-bold" style="font-size: 0.7rem;"><i class="fas fa-hand-pointer mr-1"></i>Click to open consumption table</small>
+                                    </td>
+                                    <td class="py-2.5"><span class="text-secondary font-weight-medium">{{ f.village or 'N/A' }}</span></td>
+                                    <td class="py-2.5"><span class="badge bg-light text-navy border font-weight-bold" style="font-size: 0.78rem;">{{ f.sr_number }}</span></td>
+                                </tr>
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View (< 768px) -->
+            <div class="d-md-none p-3 bg-light-subtle">
+                {% set active_idx_mob_ns = namespace(idx=0) %}
+                {% for f in farmers %}
+                    {% if f.status != 'Pending' %}
+                        {% set active_idx_mob_ns.idx = active_idx_mob_ns.idx + 1 %}
+                        <div class="card mb-2 shadow-2xs border-0" style="border-radius: 10px; overflow: hidden; cursor: pointer;" onclick="filterFarmerView({{ f.id }})">
+                            <div class="card-body p-3 bg-white">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong class="text-navy text-uppercase d-block" style="font-size: 0.88rem;">{{ active_idx_mob_ns.idx }}. {{ f.applicant_name }}</strong>
+                                        <span class="text-muted text-xs"><i class="fas fa-map-marker-alt mr-1 text-danger"></i>{{ f.village or 'N/A' }}</span>
+                                    </div>
+                                    <span class="badge bg-light text-navy border font-weight-bold" style="font-size: 0.75rem;">SR: {{ f.sr_number }}</span>
+                                </div>
+                                <small class="text-primary d-block font-weight-bold mt-1" style="font-size: 0.68rem;"><i class="fas fa-hand-pointer mr-1"></i>Tap to open consumption table</small>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Farmer Header Bar when viewing consumption -->
+    <div class="card border-0 shadow-sm mb-3 p-2.5 bg-white d-none" id="active-farmer-focus-bar" style="border-radius: 10px;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex gap-2 flex-wrap ms-auto">
+                <button type="button" class="btn btn-xs btn-outline-secondary font-weight-bold px-3" onclick="showActiveFarmersDirectory()">
+                    <i class="fas fa-arrow-left mr-1"></i>Back to Active Farmers List
+                </button>
+                <button type="button" class="btn btn-xs btn-navy font-weight-bold px-3" onclick="filterFarmerView('all')">
+                    <i class="fas fa-users mr-1"></i>Show All Farmers
+                </button>
+            </div>
+        </div>
+    </div>
+
+    {% if materials %}
+        <form id="consumption-form" action="{{ url_for('manager.save_consumption', ro_id=ro.id) }}" method="POST" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+
+
+            <!-- Desktop Horizontal Grid Table (>= 768px) -->
+            <div class="table-grid-scroll card border-0 shadow-sm mb-4 d-none d-md-block" style="border-radius: 12px; overflow-x: auto; max-height: 70vh;">
+                <table class="table table-bordered table-hover mb-0 align-middle text-sm" style="min-width: 1200px;">
+                    <thead>
+                        <tr>
+                            <th class="sticky-top-left-1 text-center" style="width: 45px;">Sr.</th>
+                            <th class="sticky-top-left-2 text-center" style="width: 90px;">Pole No</th>
+                            {% for m_name in materials %}
+                                <th class="sticky-mat-header text-center" style="min-width: 100px;">
+                                    <div class="font-weight-bold text-navy" style="font-size: 0.78rem;">{{ m_name }}</div>
+                                    <div class="text-muted text-xxs font-weight-normal">({{ material_units[m_name] }})</div>
+                                    {% if material_stocks[m_name] is defined %}
+                                         <span class="badge stock-badge-{{ m_name | e }} {% if material_stocks[m_name] <= 0 %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %} text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;" title="Available Warehouse Stock">
+                                             Stock: <span class="live-stock" data-material="{{ m_name | e }}">{{ material_stocks[m_name] | float }}</span>
+                                         </span>
+                                     {% endif %}
+                                </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for f in farmers %}
+                            {% set is_active = (f.status != 'Pending') %}
+                            {% set poles = farmer_poles[f.id] %}
+                            
+                            {% if is_active %}
+                                <!-- Farmer Section Header Row -->
+                                <tr class="bg-light farmer-{{ f.id }}-header-row">
+                                    <td colspan="{{ materials|length + 2 }}" class="py-2 px-3 bg-navy-gradient text-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <i class="fas fa-user-circle fa-lg text-warning"></i>
+                                                <strong class="text-uppercase" style="letter-spacing: 0.5px; font-size: 0.95rem;">{{ f.applicant_name }}</strong>
+                                                <span class="badge bg-light text-navy font-weight-bold ml-2">SR: {{ f.sr_number }}</span>
+                                            </div>
+                                            <div>
+                                                {% if is_active %}
+                                                    <button type="button" class="btn btn-xs btn-info text-white font-weight-bold px-2 py-1 mr-2 taping-btn" data-farmer-id="{{ f.id }}" data-farmer-name="{{ f.applicant_name }}">
+                                                        <i class="fas fa-plus-circle mr-1 text-warning"></i>Add Taping (EX)
+                                                    </button>
+                                                    <button type="button" class="btn btn-xs btn-warning text-dark font-weight-bold px-2 py-1" onclick="addPoleRow({{ f.id }})">
+                                                        <i class="fas fa-plus mr-1"></i>Add Pole
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                {% for p in poles %}
+                                    <tr class="farmer-{{ f.id }}-row {% if is_active %}row-active{% else %}row-readonly{% endif %}" data-viewport="desktop">
+                                        <td class="sticky-sr text-center text-muted font-weight-bold">
+                                                 {% if loop.first and is_active and poles|length > 1 %}
+                                                     <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deletePoleRow(this)" title="Delete Pole" style="line-height:1;">
+                                                         <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
+                                                     </button>
+                                                 {% elif not loop.first and is_active %}
+                                                     <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deletePoleRow(this)" title="Delete Pole" style="line-height:1;">
+                                                         <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
+                                                     </button>
+                                                 {% endif %}
+                                        </td>
+                                        <td class="sticky-farmer" style="padding: 6px; vertical-align: middle; text-align: center;">
+                                             {% if is_active %}
+                                                     <input type="text" name="pole_name_{{ f.id }}_{{ p }}" value="{{ p }}" 
+                                                            class="form-control form-control-sm text-center font-weight-bold" 
+                                                            style="border: 1px solid #cbd5e1; font-size: 0.75rem; padding: 3px 5px; border-radius: 4px;" required>
+                                             {% else %}
+                                                 <span class="font-weight-bold text-navy">{{ p }}</span>
+                                             {% endif %}
+                                        </td>
+                                        {% for m_name in materials %}
+                                            {% set req_qty = required_pole_map[f.id][p][m_name] or 0.0 %}
+                                            {% set cons_val = consumption_map[f.id][p][m_name] %}
+                                            <td class="text-center align-middle">
+                                                {% if is_active %}
+                                                    <input type="number" step="0.001" min="0"
+                                                           name="consumed_{{ f.id }}_{{ p }}_{{ material_ids[m_name] }}"
+                                                           data-material="{{ m_name | e }}"
+                                                           value="{{ float(cons_val) if cons_val is not none and float(cons_val) > 0 else '' }}"
+                                                           class="mat-input" placeholder="0">
+                                                {% else %}
+                                                    <span class="font-weight-bold text-navy">{{ float(cons_val) if (cons_val is not none and float(cons_val) > 0) else '—' }}</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endfor %}
+                                
+                                <!-- Read-only EX Taping Row (display only) -->
+                                {% if farmer_ex_data[f.id] %}
+                                    <tr class="farmer-{{ f.id }}-row farmer-{{ f.id }}-ex-display bg-light-subtle" style="border-top: 2px solid #17a2b8;">
+                                        <td class="sticky-sr text-center">
+                                            <button type="button" class="btn btn-xs btn-link text-success p-0 taping-btn" data-farmer-id="{{ f.id }}" data-farmer-name="{{ f.applicant_name }}" title="Edit Taping (EX)" style="line-height: 1;">
+                                                <i class="fas fa-edit" style="font-size: 0.75rem;"></i>
+                                            </button>
+                                        </td>
+                                        <td class="sticky-farmer text-center" style="padding: 6px;">
+                                            <span class="badge bg-info text-white font-weight-bold" style="font-size: 0.72rem;">EX</span>
+                                        </td>
+                                        {% for m_name in materials %}
+                                            <td class="text-center align-middle">
+                                                {% if m_name in farmer_ex_data[f.id] %}
+                                                    <span class="font-weight-bold text-info" style="font-size: 0.82rem;">{{ farmer_ex_data[f.id][m_name] }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mobile Card View (< 768px) -->
+            <div class="farmer-mobile-cards d-md-none">
+                {% for f in farmers %}
+                    {% set is_active = (f.status != 'Pending') %}
+                    {% set poles = farmer_poles[f.id] %}
+                    {% if is_active %}
+                        <div class="card mb-4 shadow-sm border-0" style="border-radius: 12px; overflow: hidden;">
+                            <div class="card-header bg-navy text-white p-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="m-0 font-weight-bold text-uppercase" style="font-size: 0.9rem;">{{ f.applicant_name }}</h6>
+                                    <small class="text-warning font-weight-bold">SR: {{ f.sr_number }} | Village: {{ f.village or 'N/A' }}</small>
+                                </div>
+                                {% if is_active %}
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-xs btn-info text-white font-weight-bold taping-btn" data-farmer-id="{{ f.id }}" data-farmer-name="{{ f.applicant_name }}">
+                                            <i class="fas fa-plus-circle mr-1 text-warning"></i>Add Taping
+                                        </button>
+                                        <button type="button" class="btn btn-xs btn-warning text-dark font-weight-bold" onclick="addPoleRow({{ f.id }})">
+                                            <i class="fas fa-plus mr-1"></i>Add Pole
+                                        </button>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="card-body p-3 bg-light-subtle farmer-mobile-body-{{ f.id }}">
+                                {% for p in poles %}
+                                    <div class="mb-3 p-3 bg-white rounded-3 shadow-2xs border mobile-pole-card-{{ f.id }}-{{ p }}" data-viewport="mobile">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                            <span class="font-weight-bold text-navy text-sm d-flex align-items-center gap-1">
+                                                    <i class="fas fa-bolt text-warning mr-1"></i>Pole: 
+                                                    {% if is_active %}
+                                                        <input type="text" name="pole_name_{{ f.id }}_{{ p }}" value="{{ p }}" 
+                                                               class="form-control form-control-sm text-center font-weight-bold d-inline-block" 
+                                                               style="width: 65px; height: 26px; font-size: 0.75rem; padding: 2px 4px; border: 1px solid #cbd5e1;" required>
+                                                    {% else %}
+                                                        {{ p }}
+                                                    {% endif %}
+                                            </span>
+                                            {% if is_active and poles|length > 1 %}
+                                                <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deleteMobilePoleCard({{ f.id }}, '{{ p }}')" title="Delete Pole">
+                                                    <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>
+                                                </button>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <div class="row g-2">
+                                            {% for m_name in materials %}
+                                                {% set cons_val = consumption_map[f.id][p][m_name] %}
+                                                {% set has_value = (cons_val is not none and float(cons_val) > 0) %}
+                                                
+                                                <div class="col-12 mat-card-item {% if not has_value %}d-none zero-mat-item-{{ f.id }}-{{ p }}{% endif %}">
+                                                    <div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">
+                                                        <div style="line-height: 1.2;">
+                                                            <div class="d-flex align-items-center gap-1 flex-wrap">
+                                                                <small class="font-weight-medium text-dark" style="font-size: 0.75rem;">{{ m_name }}</small>
+                                                                {% if material_stocks[m_name] is defined %}
+                                                                    <span class="badge stock-badge-{{ m_name | e }} {% if material_stocks[m_name] <= 0 %}bg-danger-subtle text-danger border border-danger-subtle{% else %}bg-success-subtle text-success border border-success-subtle{% endif %} text-xxs font-weight-bold px-1 py-0.2" style="font-size: 0.6rem;" title="Available Stock">
+                                                                        Stock: <span class="live-stock" data-material="{{ m_name | e }}">{{ material_stocks[m_name] | float }}</span>
+                                                                    </span>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
+                                                        <div style="width: 100px;">
+                                                            {% if is_active %}
+                                                                <input type="number" step="0.001" min="0"
+                                                                       name="consumed_{{ f.id }}_{{ p }}_{{ material_ids[m_name] }}"
+                                                                       data-material="{{ m_name | e }}"
+                                                                       value="{{ float(cons_val) if cons_val is not none and float(cons_val) > 0 else '' }}"
+                                                                       class="form-control form-control-sm text-center font-weight-bold"
+                                                                       placeholder="0" style="font-size: 0.8rem;">
+                                                            {% else %}
+                                                                <span class="font-weight-bold text-navy d-block text-end" style="font-size: 0.85rem;">
+                                                                    {{ float(cons_val) if (cons_val is not none and float(cons_val) > 0) else '—' }}
+                                                                </span>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                        
+                                        <div class="text-center mt-2">
+                                            <button type="button" class="btn btn-xs btn-link text-muted" onclick="$('.zero-mat-item-{{ f.id }}-{{ p }}').toggleClass('d-none'); $(this).text($(this).text().includes('Show All') ? 'Show Only Non-Zero' : 'Show All Materials')">
+                                                Show All Materials
+                                            </button>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                                
+                                <!-- Read-only EX Taping Card (display only) -->
+                                {% if farmer_ex_data[f.id] %}
+                                    <div class="mb-3 p-3 bg-white rounded-3 shadow-2xs border border-info farmer-{{ f.id }}-ex-display-mobile" style="border-left: 4px solid #17a2b8 !important;">
+                                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                            <span class="font-weight-bold text-navy text-sm d-flex align-items-center gap-1">
+                                                <i class="fas fa-plug text-info mr-1"></i>Taping (EX)
+                                            </span>
+                                            <button type="button" class="btn btn-xs btn-link text-success p-0 taping-btn font-weight-bold d-flex align-items-center gap-1" data-farmer-id="{{ f.id }}" data-farmer-name="{{ f.applicant_name }}" title="Edit Taping" style="text-decoration: none; font-size: 0.75rem;">
+                                                <i class="fas fa-edit"></i> Edit Taping
+                                            </button>
+                                        </div>
+                                        <div class="row g-2">
+                                            {% for m_name, qty in farmer_ex_data[f.id].items() %}
+                                                <div class="col-12 mat-card-item">
+                                                    <div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">
+                                                        <small class="font-weight-medium text-dark" style="font-size: 0.75rem;">{{ m_name }}</small>
+                                                        <span class="font-weight-bold text-info" style="font-size: 0.85rem;">{{ qty }}</span>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+
+            <!-- Save Actions -->
+            {% if ro.status != 'Completed' %}
+                <div class="d-flex justify-content-end gap-3 mt-4 mb-5 flex-wrap">
+                    <button type="submit" name="action" value="draft" class="btn btn-warning btn-save-pill text-dark font-weight-bold">
+                        <i class="fas fa-save mr-2"></i>Save Draft
+                    </button>
+                    <button type="submit" name="action" value="submit" class="btn btn-success btn-save-pill font-weight-bold" onclick="return confirm('Finalize this sheet? Stock will be debited and active farmers will be locked.')">
+                        <i class="fas fa-check-circle mr-2"></i>Save & Submit
+                    </button>
+                </div>
+            {% endif %}
+        </form>
+    {% endif %}
+{% else %}
+    <div class="card text-center py-5 shadow-sm border border-light-subtle">
+        <div class="card-body">
+            <i class="fas fa-clipboard-list fa-3x mb-3 text-muted"></i>
+            <h5 class="text-muted font-weight-bold">No Activated Farmers Yet</h5>
+            <p class="text-muted text-sm mb-3">Please review and activate farmers from the main Sub-Work Order overview to add them to this active sheet.</p>
+            <a href="{{ url_for('manager.sub_order_detail', ro_id=ro.id) }}" class="btn btn-navy font-weight-bold px-4">
+                <i class="fas fa-arrow-left mr-1"></i>Go to Farmer Activation Page
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+<!-- Taping Modal -->
+<div class="modal fade" id="tapingModal" tabindex="-1" aria-labelledby="tapingModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+      <div class="modal-header bg-navy text-white border-bottom-0 p-3">
+        <h5 class="modal-title font-weight-bold" id="tapingModalLabel">
+          <i class="fas fa-plug mr-2 text-warning"></i>Edit Taping (EX) Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="tapingForm" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="modal-body p-4">
+          <h6 class="font-weight-bold text-navy mb-1" id="tapingFarmerName">Farmer Name</h6>
+          <p class="text-muted text-xs mb-3">Add items used in tapping and tapping price below.</p>
+          
+          <div class="form-group mb-4">
+            <label for="taping_price" class="form-label font-weight-bold">Taping Connection Value (EX Price in ₹)</label>
+            <input type="number" step="0.01" min="0" name="taping_price" id="taping_price" class="form-control font-weight-bold text-navy" placeholder="0.00">
+          </div>
+          
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <label class="form-label font-weight-bold mb-0">Materials used for Taping (EX)</label>
+            <button type="button" class="btn btn-xs btn-outline-primary font-weight-bold" onclick="addTapingMaterialRow()">
+              <i class="fas fa-plus mr-1"></i>Add Item
+            </button>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle" id="tapingMaterialsTable">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 65%;">Material Item</th>
+                  <th style="width: 25%;">Quantity</th>
+                  <th style="width: 10%;" class="text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody id="tapingMaterialsBody">
+                <!-- Rows dynamically added here -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer bg-light p-3 border-top-0 d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-secondary font-weight-bold px-4" data-dismiss="modal" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+          <button type="submit" class="btn btn-navy font-weight-bold px-4" style="border-radius: 8px;">Save Details</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let materialStocks = {{ material_stocks | tojson }};
+let materialsList = {{ materials | tojson }};
+let materialIds = {{ material_ids | tojson }};
+let baseStocks = {};
+{% for m_name in materials %}
+    baseStocks["{{ m_name | e }}"] = {{ material_stocks[m_name] | float }};
+{% endfor %}
+
+function recalculateLiveStocks() {
+    var isMobile = $(window).width() < 768;
+    var totals = {};
+    
+    // Initialize totals to 0
+    for (var mat in baseStocks) {
+        totals[mat] = 0.0;
+    }
+    
+    // Sum up entered values from the active viewport
+    var selector = isMobile ? '.farmer-mobile-cards' : '.table-grid-scroll';
+    $(selector + ' input[name^="consumed_"]').each(function() {
+        var matName = $(this).attr('data-material');
+        if (matName) {
+            // Decode HTML entities if any
+            var decodedName = $('<div/>').html(matName).text();
+            var val = parseFloat($(this).val());
+            if (!isNaN(val) && val > 0) {
+                totals[decodedName] = (totals[decodedName] || 0.0) + val;
+            }
+        }
+    });
+    
+    // Update the live stock displays
+    for (var mat in baseStocks) {
+        var base = baseStocks[mat];
+        var consumed = totals[mat] || 0.0;
+        var live = base - consumed;
+        
+        // Update live stock text
+        var liveSpan = $('.live-stock[data-material="' + escapeHtmlAttr(mat) + '"]');
+        if (liveSpan.length > 0) {
+            liveSpan.text(live.toFixed(3));
+            
+            // Update badge style based on stock availability
+            var badge = liveSpan.closest('[class*="stock-badge-"]');
+            if (badge.length > 0) {
+                if (live <= 0) {
+                    badge.removeClass('bg-success-subtle text-success border-success-subtle')
+                         .addClass('bg-danger-subtle text-danger border-danger-subtle');
+                } else {
+                    badge.removeClass('bg-danger-subtle text-danger border-danger-subtle')
+                         .addClass('bg-success-subtle text-success border-success-subtle');
+                }
+            }
+        }
+    }
+}
+
+function escapeHtmlAttr(str) {
+    return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function showBootstrapModal(modalId) {
+    var modalEl = document.getElementById(modalId);
+    if (!modalEl) return;
+
+    if (window.bootstrap && bootstrap.Modal) {
+        var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    } else if (window.jQuery) {
+        $(modalEl).modal('show');
+    }
+}
+
+function addPoleRow(farmerId) {
+    var randId = Date.now() + "_" + Math.floor(Math.random() * 1000);
+    var oldPoleVal = "new_" + randId;
+    
+    var farmerRows = $('.farmer-' + farmerId + '-row');
+    var lastRow = farmerRows.length > 0 ? farmerRows.last() : $('.farmer-' + farmerId + '-header-row');
+    
+    var nextPoleNum = 1;
+    if (farmerRows.length > 0) {
+        var poleInputs = farmerRows.find('input[name^="pole_name_' + farmerId + '_"]');
+        var maxNum = 0;
+        poleInputs.each(function() {
+            var val = parseInt($(this).val());
+            if (!isNaN(val) && val > maxNum) {
+                maxNum = val;
+            }
+        });
+        nextPoleNum = maxNum + 1;
+    }
+    
+    var rowHtml = '<tr class="farmer-' + farmerId + '-row row-active">';
+    rowHtml += '<td class="sticky-sr text-center">';
+    rowHtml += '  <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deletePoleRow(this)" title="Delete Pole" style="line-height:1;">';
+    rowHtml += '    <i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i>';
+    rowHtml += '  </button>';
+    rowHtml += '</td>';
+    rowHtml += '<td class="sticky-farmer" style="padding: 6px; vertical-align: middle; text-align: center;">';
+    rowHtml += '  <input type="text" name="pole_name_' + farmerId + '_' + oldPoleVal + '" value="' + nextPoleNum + '" ';
+    rowHtml += '         class="form-control form-control-sm text-center font-weight-bold" ';
+    rowHtml += '         style="border: 1px solid #cbd5e1; font-size: 0.75rem; padding: 3px 5px; border-radius: 4px;" required>';
+    rowHtml += '</td>';
+    
+    materialsList.forEach(function(m_name) {
+        var matId = materialIds[m_name] || 0;
+        var attrMat = escapeHtmlAttr(m_name);
+        rowHtml += '<td class="text-center align-middle">';
+        rowHtml += '  <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_' + matId + '" data-material="' + attrMat + '" class="mat-input" placeholder="0">';
+        var stock = materialStocks[m_name] !== undefined ? materialStocks[m_name] : 0.0;
+        if (stock <= 0) {
+            rowHtml += '  <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-block mt-1 px-1 py-0.5" style="font-size: 0.65rem;">Not Available</span>';
+        }
+        rowHtml += '</td>';
+    });
+    rowHtml += '</tr>';
+    lastRow.after(rowHtml);
+    
+    var mobileHtml = '<div class="mb-3 p-3 bg-white rounded-3 shadow-2xs border mobile-pole-card-' + farmerId + '-' + oldPoleVal + '">';
+    mobileHtml += '  <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">';
+    mobileHtml += '    <span class="font-weight-bold text-navy text-sm d-flex align-items-center gap-1"><i class="fas fa-bolt text-warning mr-1"></i>Pole: <input type="text" name="pole_name_' + farmerId + '_' + oldPoleVal + '" value="' + nextPoleNum + '" class="form-control form-control-sm text-center font-weight-bold d-inline-block" style="width: 65px; height: 26px; font-size: 0.75rem; padding: 2px 4px; border: 1px solid #cbd5e1;" required></span>';
+    mobileHtml += '    <button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="deleteMobilePoleCard(' + farmerId + ', \'' + oldPoleVal + '\')" title="Delete Pole"><i class="fas fa-trash-alt" style="font-size: 0.72rem;"></i></button>';
+    mobileHtml += '  </div>';
+    mobileHtml += '  <div class="row g-2">';
+    materialsList.forEach(function(m_name) {
+        var matId = materialIds[m_name] || 0;
+        var attrMat = escapeHtmlAttr(m_name);
+        mobileHtml += '    <div class="col-12 mat-card-item zero-mat-item-' + farmerId + '-' + oldPoleVal + '">';
+        mobileHtml += '      <div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">';
+        mobileHtml += '        <div style="line-height: 1.2;"><small class="d-block font-weight-medium text-dark" style="font-size: 0.75rem;">' + attrMat + '</small>';
+        var stock = materialStocks[m_name] !== undefined ? materialStocks[m_name] : 0.0;
+        if (stock <= 0) {
+            mobileHtml += '          <span class="badge bg-danger-subtle text-danger border border-danger-subtle text-xxs font-weight-bold d-inline-block mt-1 px-1 py-0.5" style="font-size: 0.62rem;">Not Available</span>';
+        }
+        mobileHtml += '        </div>';
+        mobileHtml += '        <div style="width: 100px;">';
+        mobileHtml += '          <input type="number" step="0.001" min="0" name="consumed_' + farmerId + '_' + oldPoleVal + '_' + matId + '" data-material="' + attrMat + '" class="form-control form-control-sm text-center font-weight-bold" placeholder="0" style="font-size: 0.8rem;">';
+        mobileHtml += '        </div>';
+        mobileHtml += '      </div>';
+        mobileHtml += '    </div>';
+    });
+    mobileHtml += '  </div>';
+    mobileHtml += '  <div class="text-center mt-2">';
+    mobileHtml += '    <button type="button" class="btn btn-xs btn-link text-muted" onclick="$(\'.zero-mat-item-' + farmerId + '-' + oldPoleVal + '\').toggleClass(\'d-none\'); $(this).text($(this).text().includes(\'Show All\') ? \'Show Only Non-Zero\' : \'Show All Materials\')">Show Only Non-Zero</button>';
+    mobileHtml += '  </div>';
+    mobileHtml += '</div>';
+    
+    $('.farmer-mobile-body-' + farmerId).append(mobileHtml);
+}
+
+function deletePoleRow(btn) {
+    if (confirm("Delete this pole?")) {
+        var row = $(btn).closest('tr');
+        var poleInput = row.find('input[name^="pole_name_"]');
+        if (poleInput.length > 0) {
+            var inputName = poleInput.attr('name');
+            var parts = inputName.split('_');
+            if (parts.length >= 4) {
+                var farmerId = parts[2];
+                var poleKey = parts.slice(3).join('_');
+                $('.mobile-pole-card-' + farmerId + '-' + poleKey).remove();
+            }
+        }
+        var classes = row.attr('class').split(' ');
+        var farmerClass = classes.find(function(c) { return c.startsWith('farmer-') && c.endsWith('-row'); });
+        row.remove();
+        recalculateLiveStocks();
+        autoSaveDraftOnDelete();
+    }
+}
+
+function deleteMobilePoleCard(farmerId, poleKey) {
+    if (confirm("Delete this pole?")) {
+        $('.mobile-pole-card-' + farmerId + '-' + poleKey).remove();
+        var poleInput = $('input[name="pole_name_' + farmerId + '_' + poleKey + '"]');
+        if (poleInput.length > 0) {
+            var row = poleInput.closest('tr');
+            row.remove();
+        }
+        recalculateLiveStocks();
+        autoSaveDraftOnDelete();
+    }
+}
+
+function autoSaveDraftOnDelete() {
+    var form = $('#consumption-form');
+    if (form.length > 0) {
+        var draftBtn = form.find('button[name="action"][value="draft"]');
+        if (draftBtn.length > 0) {
+            draftBtn.click();
+        } else {
+            form.append('<input type="hidden" name="action" value="draft">');
+            form.submit();
+        }
+    }
+}
+
+function showActiveFarmersDirectory() {
+    $('#active-farmers-directory-card').show();
+    $('#active-farmer-focus-bar').addClass('d-none');
+    $('#consumption-form').hide();
+}
+
+function filterFarmerView(farmerId) {
+    $('#active-farmers-directory-card').hide();
+    $('#active-farmer-focus-bar').removeClass('d-none');
+    $('#consumption-form').show();
+    
+    if (farmerId === 'all') {
+        $('#focus-farmer-name').text('All Active Farmers');
+        $('[class*="farmer-"][class*="-header-row"]').show();
+        $('[class*="farmer-"][class*="-row"]').show();
+        $('.farmer-mobile-cards .card').show();
+    } else {
+        var farmerName = $('.farmer-mobile-body-' + farmerId).closest('.card').find('h6').text().trim() || 'Selected Farmer';
+        $('#focus-farmer-name').text(farmerName);
+        
+        $('[class*="farmer-"][class*="-header-row"]').hide();
+        $('[class*="farmer-"][class*="-row"]').hide();
+        $('.farmer-' + farmerId + '-header-row').show();
+        $('.farmer-' + farmerId + '-row').show();
+        
+        $('.farmer-mobile-cards .card').hide();
+        $('.farmer-mobile-body-' + farmerId).closest('.card').show();
+    }
+    $('html, body').animate({ scrollTop: $('#active-farmer-focus-bar').offset().top - 70 }, 300);
+}
+$(document).ready(function() {
+    $(document).on('click', '.taping-btn', function(e) {
+        e.preventDefault();
+        var farmerId = $(this).data('farmer-id');
+        var farmerName = $(this).data('farmer-name');
+        openTapingModal(farmerId, farmerName);
+    });
+});
+
+function openTapingModal(farmerId, farmerName) {
+    $('#tapingFarmerName').text(farmerName);
+    $('#tapingForm').attr('action', '/manager/farmer/' + farmerId + '/taping');
+    $('#tapingMaterialsBody').empty();
+    $('#taping_price').val('0.00');
+    
+    // Fetch current details
+    $.getJSON('/manager/farmer/' + farmerId + '/taping', function(data) {
+        $('#taping_price').val(parseFloat(data.taping_price || 0.0).toFixed(2));
+        if (data.materials && data.materials.length > 0) {
+            data.materials.forEach(function(item) {
+                addTapingMaterialRow(item.material_name, item.qty_consumed);
+            });
+        } else {
+            addTapingMaterialRow(); // add an empty row by default
+        }
+        showBootstrapModal('tapingModal');
+    }).fail(function() {
+        alert("Failed to fetch taping details. Please try again.");
+    });
+}
+
+function addTapingMaterialRow(selectedMat = '', qty = '') {
+    var tr = $('<tr>');
+    
+    // Select dropdown
+    var tdMat = $('<td>');
+    var select = $('<select name="materials[]" class="form-control form-control-sm select-mat-dropdown" required>');
+    select.append('<option value="">-- Select Material --</option>');
+    materialsList.forEach(function(m_name) {
+        var opt = $('<option>').attr('value', m_name).text(m_name);
+        if (m_name === selectedMat) {
+            opt.attr('selected', 'selected');
+        }
+        select.append(opt);
+    });
+    tdMat.append(select);
+    tr.append(tdMat);
+    
+    // Qty input
+    var tdQty = $('<td>');
+    var input = $('<input type="number" step="0.001" min="0.001" name="qtys[]" class="form-control form-control-sm text-center font-weight-bold" required>');
+    input.val(qty);
+    tdQty.append(input);
+    tr.append(tdQty);
+    
+    // Delete action
+    var tdAct = $('<td class="text-center">');
+    var delBtn = $('<button type="button" class="btn btn-xs btn-link text-danger p-0" onclick="$(this).closest(\'tr\').remove()"><i class="fas fa-trash-alt"></i></button>');
+    tdAct.append(delBtn);
+    tr.append(tdAct);
+    
+    $('#tapingMaterialsBody').append(tr);
+}
+
+// Dynamic Toast Notification System
+function showToast(message, type = 'success') {
+    let container = $('#toast-container');
+    if (container.length === 0) {
+        container = $('<div id="toast-container"></div>');
+        $('body').append(container);
+    }
+    
+    var iconClass = type === 'success' ? 'fa-check-circle text-emerald-400' : 'fa-exclamation-circle text-rose-500';
+    var iconColor = type === 'success' ? '#10b981' : '#ef4444';
+    var toastClass = type === 'success' ? 'custom-toast' : 'custom-toast danger';
+    
+    var toast = $('<div class="' + toastClass + '">' +
+        '<i class="fas ' + iconClass + '" style="color: ' + iconColor + '; font-size: 1.25rem;"></i>' +
+        '<div style="font-weight: 500; font-size: 0.9rem; flex: 1;">' + message + '</div>' +
+        '<button type="button" class="toast-close">&times;</button>' +
+        '</div>');
+        
+    container.append(toast);
+    
+    setTimeout(function() {
+        toast.addClass('show');
+    }, 50);
+    
+    toast.find('.toast-close').click(function() {
+        toast.removeClass('show');
+        setTimeout(function() {
+            toast.remove();
+        }, 300);
+    });
+    
+    setTimeout(function() {
+        toast.removeClass('show');
+        setTimeout(function() {
+            toast.remove();
+        }, 300);
+    }, 4000);
+}
+
+// Function to dynamically update pole input names in DOM after successful draft save
+function updateNewPoleInputNames() {
+    $('input[name^="pole_name_"]').each(function() {
+        var input = $(this);
+        var name = input.attr('name');
+        var parts = name.split('_');
+        if (parts.length >= 4 && parts[3] === 'new') {
+            var farmerId = parts[2];
+            var oldPoleVal = parts.slice(3).join('_');
+            var newVal = input.val().trim();
+            if (newVal) {
+                // Update the pole name input name attribute
+                input.attr('name', 'pole_name_' + farmerId + '_' + newVal);
+                
+                var tableRow = input.closest('tr');
+                if (tableRow.length > 0) {
+                    tableRow.find('input[name^="consumed_' + farmerId + '_' + oldPoleVal + '_"]').each(function() {
+                        var matInput = $(this);
+                        var matName = matInput.attr('name');
+                        var searchStr = 'consumed_' + farmerId + '_' + oldPoleVal + '_';
+                        var replaceStr = 'consumed_' + farmerId + '_' + newVal + '_';
+                        matInput.attr('name', matName.replace(searchStr, replaceStr));
+                    });
+                }
+                
+                var mobileCard = $('.mobile-pole-card-' + farmerId + '-' + oldPoleVal);
+                if (mobileCard.length > 0) {
+                    mobileCard.removeClass('mobile-pole-card-' + farmerId + '-' + oldPoleVal)
+                              .addClass('mobile-pole-card-' + farmerId + '-' + newVal);
+                              
+                    var delBtn = mobileCard.find('button[onclick^="deleteMobilePoleCard"]');
+                    if (delBtn.length > 0) {
+                        delBtn.attr('onclick', 'deleteMobilePoleCard(' + farmerId + ', "' + newVal + '")');
+                    }
+                    
+                    mobileCard.find('input[name^="consumed_' + farmerId + '_' + oldPoleVal + '_"]').each(function() {
+                        var matInput = $(this);
+                        var matName = matInput.attr('name');
+                        var searchStr = 'consumed_' + farmerId + '_' + oldPoleVal + '_';
+                        var replaceStr = 'consumed_' + farmerId + '_' + newVal + '_';
+                        matInput.attr('name', matName.replace(searchStr, replaceStr));
+                    });
+                    
+                    var toggleBtn = mobileCard.find('button[onclick*="zero-mat-item-"]');
+                    if (toggleBtn.length > 0) {
+                        var newToggleOnClick = toggleBtn.attr('onclick').replace(
+                            new RegExp('zero-mat-item-' + farmerId + '-' + oldPoleVal, 'g'),
+                            'zero-mat-item-' + farmerId + '-' + newVal
+                        );
+                        toggleBtn.attr('onclick', newToggleOnClick);
+                    }
+                    
+                    mobileCard.find('.zero-mat-item-' + farmerId + '-' + oldPoleVal).each(function() {
+                        $(this).removeClass('zero-mat-item-' + farmerId + '-' + oldPoleVal)
+                               .addClass('zero-mat-item-' + farmerId + '-' + newVal);
+                    });
+                }
+            }
+        }
+    });
+}
+
+// Sync input values from the active viewport to the inactive viewport
+// so both stay consistent after an AJAX save
+function syncViewportValues(isMobile) {
+    if (isMobile) {
+        // User entered values on mobile cards; copy to desktop table
+        $('.farmer-mobile-cards input[name^="consumed_"]').each(function() {
+            var name = $(this).attr('name');
+            var val = $(this).val();
+            $('.table-grid-scroll input').filter(function() {
+                return $(this).attr('name') === name;
+            }).val(val);
+        });
+        $('.farmer-mobile-cards input[name^="pole_name_"]').each(function() {
+            var name = $(this).attr('name');
+            var val = $(this).val();
+            $('.table-grid-scroll input').filter(function() {
+                return $(this).attr('name') === name;
+            }).val(val);
+        });
+    } else {
+        // User entered values on desktop table; copy to mobile cards
+        $('.table-grid-scroll input[name^="consumed_"]').each(function() {
+            var name = $(this).attr('name');
+            var val = $(this).val();
+            $('.farmer-mobile-cards input').filter(function() {
+                return $(this).attr('name') === name;
+            }).val(val);
+        });
+        $('.table-grid-scroll input[name^="pole_name_"]').each(function() {
+            var name = $(this).attr('name');
+            var val = $(this).val();
+            $('.farmer-mobile-cards input').filter(function() {
+                return $(this).attr('name') === name;
+            }).val(val);
+        });
+    }
+}
+
+// Intercept form submissions for AJAX
+let currentAction = 'draft';
+
+$(document).ready(function() {
+    // Recalculate stock values on page load
+    recalculateLiveStocks();
+    
+    // Recalculate live stock when user changes inputs
+    $(document).on('input change', 'input[name^="consumed_"]', function() {
+        recalculateLiveStocks();
+    });
+    
+    // Recalculate on viewport resize/focus
+    $(window).on('resize focus', function() {
+        recalculateLiveStocks();
+    });
+
+    $(document).on('click', '#consumption-form button[type="submit"]', function() {
+        currentAction = $(this).val() || 'draft';
+    });
+
+    $(document).on('submit', '#consumption-form', function(e) {
+        if (currentAction === 'draft') {
+            e.preventDefault();
+            
+            var form = $(this);
+            var url = form.attr('action');
+            
+            // IMPORTANT: Disable the inactive viewport's inputs BEFORE serializing
+            // so that duplicate-named inputs from the hidden viewport are NOT included.
+            var isMobile = $(window).width() < 768;
+            if (isMobile) {
+                $('.table-grid-scroll :input').prop('disabled', true);
+            } else {
+                $('.farmer-mobile-cards :input').prop('disabled', true);
+            }
+            
+            var data = form.serializeArray();
+            data.push({ name: 'action', value: 'draft' });
+            
+            var draftBtn = form.find('button[name="action"][value="draft"]');
+            var originalHtml = draftBtn.html();
+            draftBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-2"></i>Saving Draft...');
+            
+            $.ajax({
+                url: url,
+                type: 'POST',
+                data: data,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    draftBtn.prop('disabled', false).html(originalHtml);
+                    // Re-enable the inactive viewport inputs
+                    if (isMobile) {
+                        $('.table-grid-scroll :input').prop('disabled', false);
+                    } else {
+                        $('.farmer-mobile-cards :input').prop('disabled', false);
+                    }
+                    
+                    if (response.status === 'success') {
+                        showToast(response.message || 'Draft saved successfully!', 'success');
+                        updateNewPoleInputNames();
+                        
+                        // Sync values from the active viewport to the inactive viewport
+                        syncViewportValues(isMobile);
+                        
+                        // Recalculate live stocks after synchronization
+                        recalculateLiveStocks();
+                    } else {
+                        showToast(response.message || 'Error saving draft.', 'danger');
+                    }
+                },
+                error: function(xhr) {
+                    draftBtn.prop('disabled', false).html(originalHtml);
+                    // Re-enable the inactive viewport inputs
+                    if (isMobile) {
+                        $('.table-grid-scroll :input').prop('disabled', false);
+                    } else {
+                        $('.farmer-mobile-cards :input').prop('disabled', false);
+                    }
+                    
+                    var errMsg = 'Error saving draft. Please try again.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    }
+                    showToast(errMsg, 'danger');
+                }
+            });
+        } else {
+            // For Save & Submit, disable the inactive viewport inputs to prevent duplicate key submission
+            if ($(window).width() < 768) {
+                $('.table-grid-scroll :input').prop('disabled', true);
+            } else {
+                $('.farmer-mobile-cards :input').prop('disabled', true);
+            }
+        }
+    });
+
+    $(document).on('submit', '#tapingForm', function(e) {
+        e.preventDefault();
+        
+        var form = $(this);
+        var url = form.attr('action');
+        var data = form.serialize();
+        
+        var btn = form.find('button[type="submit"]');
+        var originalHtml = btn.html();
+        btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Saving...');
+        
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: data,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                btn.prop('disabled', false).html(originalHtml);
+                
+                // Hide the modal
+                var modalEl = document.getElementById('tapingModal');
+                if (window.bootstrap && bootstrap.Modal) {
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                } else if (window.jQuery) {
+                    $(modalEl).modal('hide');
+                }
+                
+                if (response.status === 'success') {
+                    showToast(response.message || 'Taping details updated successfully.', 'success');
+                    
+                    // Update the taping display in the desktop table and mobile cards dynamically
+                    var farmerId = url.split('/').slice(-2, -1)[0];
+                    
+                    // Update Taping Button text/color (no longer toggles header button layout, always remains Add Taping)
+                    var farmerName = $('#tapingFarmerName').text() || '';
+                    
+                    // Update read-only EX display row (desktop)
+                    $('.farmer-' + farmerId + '-ex-display').remove();
+                    // Update read-only EX display card (mobile)
+                    $('.farmer-' + farmerId + '-ex-display-mobile').remove();
+                    
+                    if (response.materials && response.materials.length > 0) {
+                        var desktopRow = $('<tr class="farmer-' + farmerId + '-row farmer-' + farmerId + '-ex-display bg-light-subtle" style="border-top: 2px solid #17a2b8;">');
+                        desktopRow.append('<td class="sticky-sr text-center"><button type="button" class="btn btn-xs btn-link text-success p-0 taping-btn" data-farmer-id="' + farmerId + '" data-farmer-name="' + escapeHtmlAttr(farmerName) + '" title="Edit Taping (EX)" style="line-height: 1;"><i class="fas fa-edit" style="font-size: 0.75rem;"></i></button></td>');
+                        desktopRow.append('<td class="sticky-farmer text-center" style="padding: 6px;"><span class="badge bg-info text-white font-weight-bold" style="font-size: 0.72rem;">EX</span></td>');
+                        
+                        materialsList.forEach(function(m_name) {
+                            var foundMat = response.materials.find(m => m.material_name === m_name);
+                            var td = $('<td class="text-center align-middle">');
+                            if (foundMat) {
+                                td.append('<span class="font-weight-bold text-info" style="font-size: 0.82rem;">' + foundMat.qty_consumed + '</span>');
+                            } else {
+                                td.append('<span class="text-muted">—</span>');
+                            }
+                            desktopRow.append(td);
+                        });
+                        
+                        var lastFarmerRow = $('.farmer-' + farmerId + '-row').last();
+                        if (lastFarmerRow.length > 0) {
+                            lastFarmerRow.after(desktopRow);
+                        } else {
+                            $('.farmer-' + farmerId + '-header-row').after(desktopRow);
+                        }
+                        
+                        var mobileCard = $('<div class="mb-3 p-3 bg-white rounded-3 shadow-2xs border border-info farmer-' + farmerId + '-ex-display-mobile" style="border-left: 4px solid #17a2b8 !important;">');
+                        mobileCard.append('<div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom"><span class="font-weight-bold text-navy text-sm d-flex align-items-center gap-1"><i class="fas fa-plug text-info mr-1"></i>Taping (EX)</span><button type="button" class="btn btn-xs btn-link text-success p-0 taping-btn font-weight-bold d-flex align-items-center gap-1" data-farmer-id="' + farmerId + '" data-farmer-name="' + escapeHtmlAttr(farmerName) + '" title="Edit Taping" style="text-decoration: none; font-size: 0.75rem;"><i class="fas fa-edit"></i> Edit Taping</button></div>');
+                        var mobileGrid = $('<div class="row g-2">');
+                        
+                        response.materials.forEach(function(item) {
+                            var col = $('<div class="col-12 mat-card-item">');
+                            var inner = $('<div class="p-2 bg-light rounded d-flex justify-content-between align-items-center">');
+                            inner.append('<small class="font-weight-medium text-dark" style="font-size: 0.75rem;">' + item.material_name + '</small>');
+                            inner.append('<span class="font-weight-bold text-info" style="font-size: 0.85rem;">' + item.qty_consumed + '</span>');
+                            col.append(inner);
+                            mobileGrid.append(col);
+                        });
+                        mobileCard.append(mobileGrid);
+                        $('.farmer-mobile-body-' + farmerId).append(mobileCard);
+                    }
+                } else {
+                    showToast(response.message || 'Error updating taping details.', 'danger');
+                }
+            },
+            error: function(xhr) {
+                btn.prop('disabled', false).html(originalHtml);
+                var errMsg = 'Error updating taping details. Please try again.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                }
+                showToast(errMsg, 'danger');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
