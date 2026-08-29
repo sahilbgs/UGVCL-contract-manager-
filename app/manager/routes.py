@@ -258,9 +258,21 @@ def get_sub_order_context(ro_id):
         status_counts[f.status] = status_counts.get(f.status, 0) + 1
         
     material_stocks = {}
+    material_base_stocks = {}
     for name in material_list:
-        m = Material.query.filter_by(name=name).first()
-        material_stocks[name] = float(m.current_stock) if m else 0.0
+        resolved_code = resolve_item_code_from_name(name)
+        m = find_material_by_code_or_name(resolved_code, name)
+        curr_stock = float(m.current_stock) if m else 0.0
+        material_stocks[name] = curr_stock
+        
+        ro_normal_consumed = 0.0
+        for f in farmers:
+            if f.status not in ['Pending', 'Disputed']:
+                for fm in f.materials:
+                    if fm.pole_no != 'EX' and (fm.material_name == name or (m and m.item_code and fm.item_code == m.item_code) or (m and fm.material_name == m.name)):
+                        ro_normal_consumed += float(fm.qty_consumed or 0.0)
+                        
+        material_base_stocks[name] = curr_stock + ro_normal_consumed
             
     return {
         'ro': ro, 'wo': wo, 'farmers': farmers, 'materials': material_list,
@@ -268,6 +280,7 @@ def get_sub_order_context(ro_id):
         'required_map': required_map,
         'required_pole_map': required_pole_map, 'consumption_map': consumption_map,
         'farmer_poles': farmer_poles, 'material_stocks': material_stocks,
+        'material_base_stocks': material_base_stocks,
         'farmer_ex_data': farmer_ex_data, 'farmer_has_taping': farmer_has_taping,
         'status_counts': status_counts, 'float': float, 'isinstance': isinstance, 'Decimal': Decimal
     }
@@ -413,15 +426,16 @@ def save_consumption(ro_id):
     
     available_stocks = {}
     for m_name in material_list:
-        m = Material.query.filter_by(name=m_name).first()
+        resolved_code = resolve_item_code_from_name(m_name)
+        m = find_material_by_code_or_name(resolved_code, m_name)
         if m:
-            active_farmers_consumed = Decimal('0.0')
+            ro_consumed = Decimal('0.0')
             for farmer in farmers:
-                if farmer.status in ['Active', 'Started']:
+                if farmer.status not in ['Pending', 'Disputed']:
                     for fm in farmer.materials:
-                        if fm.material_name == m_name:
-                            active_farmers_consumed += fm.qty_consumed or Decimal('0.0')
-            available_stocks[m_name] = m.current_stock + active_farmers_consumed
+                        if fm.pole_no != 'EX' and (fm.material_name == m_name or (m.item_code and fm.item_code == m.item_code) or fm.material_name == m.name):
+                            ro_consumed += fm.qty_consumed or Decimal('0.0')
+            available_stocks[m_name] = m.current_stock + ro_consumed
         else:
             available_stocks[m_name] = Decimal('0.0')
 
@@ -640,9 +654,31 @@ def save_consumption(ro_id):
             
     db.session.commit()
     
+    # Build updated stock dictionaries to return via AJAX
+    updated_material_stocks = {}
+    updated_material_base_stocks = {}
+    for m_name in material_list:
+        resolved_code = resolve_item_code_from_name(m_name)
+        m = find_material_by_code_or_name(resolved_code, m_name)
+        c_stock = float(m.current_stock) if m else 0.0
+        updated_material_stocks[m_name] = c_stock
+        
+        ro_c = 0.0
+        for f in farmers:
+            if f.status not in ['Pending', 'Disputed']:
+                for fm in f.materials:
+                    if fm.pole_no != 'EX' and (fm.material_name == m_name or (m and m.item_code and fm.item_code == m.item_code) or (m and fm.material_name == m.name)):
+                        ro_c += float(fm.qty_consumed or 0.0)
+        updated_material_base_stocks[m_name] = c_stock + ro_c
+
     # Return JSON for AJAX requests (no page reload)
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'status': 'success', 'message': flash_msg})
+        return jsonify({
+            'status': 'success',
+            'message': flash_msg,
+            'material_stocks': updated_material_stocks,
+            'material_base_stocks': updated_material_base_stocks
+        })
     
     if action == 'submit':
         return redirect(url_for('manager.dashboard'))

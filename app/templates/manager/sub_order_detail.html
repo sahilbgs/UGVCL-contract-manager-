@@ -693,6 +693,7 @@
 {% block extra_js %}
 <script>
 let materialStocks = {{ material_stocks | tojson }};
+let materialBaseStocks = {{ material_base_stocks | tojson }};
 let materialsList = {{ materials | tojson }};
 
 function escapeHtmlAttr(str) {
@@ -869,7 +870,9 @@ $(document).ready(function() {
         var errors = [];
         for (var matName in proposedTotals) {
             var proposed = proposedTotals[matName];
-            var available = materialStocks[matName] !== undefined ? materialStocks[matName] : 0.0;
+            var available = (typeof materialBaseStocks !== 'undefined' && materialBaseStocks[matName] !== undefined)
+                            ? materialBaseStocks[matName]
+                            : (materialStocks[matName] !== undefined ? materialStocks[matName] : 0.0);
             if (proposed > available + 0.0001) {
                 errors.push("Insufficient stock for " + matName + ". Available: " + available.toFixed(3) + ", Proposed: " + proposed.toFixed(3));
             }

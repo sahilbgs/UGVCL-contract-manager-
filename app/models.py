@@ -127,8 +127,8 @@ class Material(db.Model):
     def current_stock(self):
         # Calculate actual net quantity that left the warehouse
         # For each farmer, they took max(issued, consumed)
-        from app.models import FarmerMaterial
-        from sqlalchemy import or_
+        from app.models import FarmerMaterial, CreditReceipt
+        from sqlalchemy import or_, func
         from decimal import Decimal
         from collections import defaultdict
         
@@ -145,6 +145,8 @@ class Material(db.Model):
             fms = FarmerMaterial.query.filter_by(material_name=self.name).all()
             
         for fm in fms:
+            if fm.farmer and fm.farmer.status == 'Disputed':
+                continue
             farmer_totals[fm.farmer_id]['issued'] += fm.qty_issued or Decimal('0.0')
             farmer_totals[fm.farmer_id]['consumed'] += fm.qty_consumed or Decimal('0.0')
             
@@ -152,7 +154,9 @@ class Material(db.Model):
         for f_id, totals in farmer_totals.items():
             total_deducted += max(totals['issued'], totals['consumed'])
             
-        return self.opening_stock + self.received_qty - total_deducted
+        cr_sum = db.session.query(func.sum(CreditReceipt.qty)).filter_by(material_name=self.name).scalar() or Decimal('0.0')
+            
+        return self.opening_stock + self.received_qty + Decimal(str(cr_sum)) - total_deducted
 
 
     @property

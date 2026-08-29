@@ -1,612 +1,765 @@
 {% extends "base.html" %}
 
-{% block title %}Main Inventory | UGVCL Portal Contract Manager{% endblock %}
+{% block title %}Main Inventory & Warehouse Command Center | UGVCL Portal{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --ugvcl-navy: #001f3f;
+        --ugvcl-navy-dark: #00152a;
+        --ugvcl-blue: #0284c7;
+        --ugvcl-gold: #f59e0b;
+        --ugvcl-emerald: #10b981;
+        --ugvcl-border: #e2e8f0;
+        --ugvcl-bg-subtle: #f8fafc;
+    }
+
+    /* ── Remove all number input spinners/stepper arrows completely ── */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none !important;
+        margin: 0 !important;
+    }
+    input[type="number"] {
+        -moz-appearance: textfield !important;
+        appearance: textfield !important;
+    }
+
+    /* ── Top Hero Banner ── */
+    .hero-inventory-panel {
+        background: linear-gradient(135deg, #001f3f 0%, #0a3d62 50%, #1e3a8a 100%);
+        color: #ffffff;
+        border-radius: 16px;
+        padding: 22px 26px;
+        margin-bottom: 22px;
+        box-shadow: 0 10px 25px -5px rgba(0, 31, 63, 0.25);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-inventory-panel::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -10%;
+        width: 350px;
+        height: 350px;
+        background: radial-gradient(circle, rgba(245, 158, 11, 0.15) 0%, rgba(255,255,255,0) 70%);
+        pointer-events: none;
+    }
+
+    /* ── Quick KPI Stat Cards ── */
+    .kpi-stat-card {
+        background: #ffffff;
+        border-radius: 14px;
+        padding: 16px 20px;
+        border: 1px solid var(--ugvcl-border);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: all 0.2s ease;
+        height: 100%;
+    }
+    .kpi-stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+    }
+    .kpi-icon-wrapper {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        flex-shrink: 0;
+    }
+    .kpi-icon-materials { background: #e0f2fe; color: #0369a1; }
+    .kpi-icon-valuation { background: #fef3c7; color: #b45309; }
+    .kpi-icon-receipts { background: #dcfce7; color: #15803d; }
+    .kpi-icon-returns { background: #f3e8ff; color: #7e22ce; }
+
+    /* ── Elevated Navigation Tabs ── */
+    .inventory-nav-tabs {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 6px;
+        border: 1px solid var(--ugvcl-border);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        margin-bottom: 22px;
+        display: flex;
+        gap: 6px;
+    }
+    .inventory-nav-tabs .nav-link {
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.88rem;
+        color: #475569;
+        padding: 10px 18px;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+    .inventory-nav-tabs .nav-link:hover {
+        background: #f1f5f9;
+        color: var(--ugvcl-navy);
+    }
+    .inventory-nav-tabs .nav-link.active {
+        background: var(--ugvcl-navy);
+        color: #ffffff;
+        box-shadow: 0 4px 10px rgba(0, 31, 63, 0.2);
+    }
+
+    /* ── Filter & Search Toolbar ── */
+    .filter-card-bar {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 12px 18px;
+        border: 1px solid var(--ugvcl-border);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        margin-bottom: 16px;
+    }
+
+    /* ── Stock Health Badges ── */
+    .stock-health-badge {
+        font-size: 0.8rem;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 50rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        letter-spacing: 0.2px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+    }
+    .stock-health-badge:hover {
+        transform: scale(1.04);
+    }
+    .stock-health-good {
+        background: #dcfce7;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+    .stock-health-low {
+        background: #fef3c7;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+    .stock-health-zero {
+        background: #fee2e2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+    }
+
+    /* ── Table Styling ── */
+    .inventory-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        width: 100%;
+    }
+    .inventory-table th {
+        background: #f8fafc;
+        color: #1e293b;
+        font-weight: 700;
+        font-size: 0.82rem;
+        padding: 12px 14px;
+        border-top: 1px solid var(--ugvcl-border);
+        border-bottom: 2px solid var(--ugvcl-border);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .inventory-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: 0.88rem;
+    }
+    .inventory-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    /* ── OCR Dropzone ── */
+    .ocr-dropzone {
+        border: 2px dashed #93c5fd;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #f0f9ff;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    .ocr-dropzone:hover {
+        border-color: #0284c7;
+        background: #e0f2fe;
+    }
+
+    /* ── Mobile Layout ── */
+    @media (max-width: 768px) {
+        .hero-inventory-panel { padding: 16px; border-radius: 12px; }
+        .hero-inventory-panel h3 { font-size: 1.15rem; }
+        .inventory-nav-tabs { flex-direction: column; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 pb-2 border-bottom">
-    <h1 class="h3 mb-2 mb-md-0 text-navy font-weight-bold">
-        <i class="fas fa-boxes-stacked mr-2 text-navy"></i>Main Inventory
-    </h1>
-    <span class="badge bg-navy rounded-pill px-3 py-2">
-        <i class="fas fa-warehouse mr-1 text-warning"></i> UGVCL Central Warehouse
-    </span>
-</div>
+<div class="container-fluid px-2 px-md-4 py-3">
 
-<!-- Tabs Navigation -->
-<ul class="nav nav-tabs nav-fill mb-4 shadow-sm rounded bg-white p-2" id="inventoryTabs" role="tablist">
-    <li class="nav-item" role="presentation">
-        <button class="nav-link active font-weight-bold text-navy" id="stock-levels-tab" data-bs-toggle="tab" data-bs-target="#stock-levels" type="button" role="tab" aria-controls="stock-levels" aria-selected="true">
-            <i class="fas fa-boxes-stacked mr-2"></i>Stock Levels & Rates
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link font-weight-bold text-navy" id="add-stock-tab" data-bs-toggle="tab" data-bs-target="#add-stock" type="button" role="tab" aria-controls="add-stock" aria-selected="false">
-            <i class="fas fa-plus-circle mr-2 text-success"></i>Add Stock (Photo/Manual)
-        </button>
-    </li>
-    <li class="nav-item" role="presentation">
-        <button class="nav-link font-weight-bold text-navy" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
-            <i class="fas fa-history mr-2 text-warning"></i>Transaction History
-        </button>
-    </li>
-</ul>
+    <!-- 1. Executive Warehouse Hero Panel -->
+    <div class="hero-inventory-panel">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+                    <span class="badge bg-warning text-dark font-weight-bold px-2 py-1" style="font-size: 0.75rem;">
+                        <i class="fas fa-warehouse mr-1"></i>UGVCL Central Store
+                    </span>
+                    <span class="badge bg-info text-white font-weight-bold px-2 py-1" style="font-size: 0.75rem;">
+                        Live Stock Ledger Active
+                    </span>
+                </div>
+                <h3 class="font-weight-bold m-0 text-white" style="letter-spacing: -0.5px;">
+                    <i class="fas fa-boxes-stacked mr-2 text-warning"></i>Main Inventory & Warehouse Management
+                </h3>
+                <p class="text-white-50 text-xs mt-1 mb-0">
+                    Real-time stock tracking, gate pass OCR digitizer, credit returns, and material consumption audit.
+                </p>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-success text-white font-weight-bold px-3" id="view-all-credits-btn" style="border-radius: 8px; border-color: rgba(255,255,255,0.4);">
+                    <i class="fas fa-circle-plus mr-1 text-success"></i>All Credit Inflows
+                </button>
+                <button class="btn btn-sm btn-outline-danger text-white font-weight-bold px-3" id="view-all-debits-btn" style="border-radius: 8px; border-color: rgba(255,255,255,0.4);">
+                    <i class="fas fa-circle-minus mr-1 text-danger"></i>All Debit Outflows
+                </button>
+            </div>
+        </div>
+    </div>
 
-<div class="tab-content" id="inventoryTabsContent">
-    <!-- TAB 1: STOCK LEVELS & RATES -->
-    <div class="tab-pane fade show active" id="stock-levels" role="tabpanel" aria-labelledby="stock-levels-tab">
-        <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between flex-wrap gap-2">
-                <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-clipboard-list mr-2"></i>Inventory Levels & Rates Overview</h3>
-                <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-sm btn-outline-success rounded-pill font-weight-bold px-3" id="view-all-credits-btn">
-                        <i class="fas fa-circle-plus mr-1"></i> Credit History
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill font-weight-bold px-3" id="view-all-debits-btn">
-                        <i class="fas fa-circle-minus mr-1"></i> Debit History
-                    </button>
+    <!-- 2. KPI Summary Cards Grid -->
+    {% set ns = namespace(active_count=0, total_val=0.0, low_count=0) %}
+    {% for m in materials %}
+        {% if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 %}
+            {% set ns.active_count = ns.active_count + 1 %}
+            {% set st = m.current_stock | float %}
+            {% set pr = m.unit_price | float if m.unit_price else 0.0 %}
+            {% if st > 0 %}
+                {% set ns.total_val = ns.total_val + (st * pr) %}
+            {% elif st <= 0 %}
+                {% set ns.low_count = ns.low_count + 1 %}
+            {% endif %}
+        {% endif %}
+    {% endfor %}
+
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="kpi-stat-card">
+                <div class="kpi-icon-wrapper kpi-icon-materials">
+                    <i class="fas fa-cubes"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-weight-semibold">Active Materials</div>
+                    <div class="font-weight-bold text-dark" style="font-size: 1.3rem;">{{ ns.active_count }}</div>
                 </div>
             </div>
-            <div class="card-body p-0">
-                <!-- Search and Sorting Bar -->
-                <div class="row p-3 bg-light border-bottom align-items-center m-0">
-                    <div class="col-md-7 mb-2 mb-md-0">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" id="inventorySearch" class="form-control border-start-0" placeholder="Search by Material Name or Item Code...">
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-stat-card">
+                <div class="kpi-icon-wrapper kpi-icon-valuation">
+                    <i class="fas fa-indian-rupee-sign"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-weight-semibold">Inventory Valuation</div>
+                    <div class="font-weight-bold text-navy" style="font-size: 1.3rem;">₹{{ "{:,.2f}".format(ns.total_val) }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-stat-card">
+                <div class="kpi-icon-wrapper kpi-icon-receipts">
+                    <i class="fas fa-receipt"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-weight-semibold">Gate Pass Receipts (MR)</div>
+                    <div class="font-weight-bold text-success" style="font-size: 1.3rem;">{{ receipts|length }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="kpi-stat-card">
+                <div class="kpi-icon-wrapper kpi-icon-returns">
+                    <i class="fas fa-rotate-left"></i>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-weight-semibold">Surplus Returns (CR)</div>
+                    <div class="font-weight-bold text-purple" style="font-size: 1.3rem; color: #7e22ce;">{{ credit_receipts|length }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. Navigation Tabs -->
+    <ul class="nav inventory-nav-tabs" id="inventoryTabs" role="tablist">
+        <li class="nav-item flex-fill" role="presentation">
+            <button class="nav-link w-100 justify-content-center active" id="stock-levels-tab" data-bs-toggle="tab" data-bs-target="#stock-levels" type="button" role="tab" aria-controls="stock-levels" aria-selected="true">
+                <i class="fas fa-boxes-stacked mr-1 text-warning"></i>Stock Levels & Rates
+            </button>
+        </li>
+        <li class="nav-item flex-fill" role="presentation">
+            <button class="nav-link w-100 justify-content-center" id="add-stock-tab" data-bs-toggle="tab" data-bs-target="#add-stock" type="button" role="tab" aria-controls="add-stock" aria-selected="false">
+                <i class="fas fa-file-import mr-1 text-success"></i>Inward Stock (OCR & Manual)
+            </button>
+        </li>
+        <li class="nav-item flex-fill" role="presentation">
+            <button class="nav-link w-100 justify-content-center" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                <i class="fas fa-history mr-1 text-info"></i>Transaction Logs & Audit
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Contents -->
+    <div class="tab-content" id="inventoryTabsContent">
+        
+        <!-- ════════════════ TAB 1: STOCK LEVELS & RATES ════════════════ -->
+        <div class="tab-pane fade show active" id="stock-levels" role="tabpanel" aria-labelledby="stock-levels-tab">
+            <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px; overflow: hidden;">
+                
+                <!-- Search & Filters Toolbar -->
+                <div class="filter-card-bar border-0 mb-0 border-bottom">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-5">
+                            <div class="input-group">
+                                <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="inventorySearch" class="form-control border-start-0" placeholder="Search material name or code...">
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-5 d-flex justify-content-md-end">
-                        <div class="d-flex align-items-center">
-                            <label for="inventorySort" class="form-label mb-0 mr-2 font-weight-bold text-navy text-nowrap"><i class="fas fa-sort mr-1"></i>Sort By:</label>
-                            <select id="inventorySort" class="form-select form-select-sm" style="max-width: 250px;">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="text-xs text-muted font-weight-bold text-nowrap">Filter:</span>
+                                <select id="stockFilter" class="form-select form-select-sm" style="font-size: 0.82rem; border-radius: 8px;">
+                                    <option value="all">All Materials</option>
+                                    <option value="in-stock">In Stock (> 0)</option>
+                                    <option value="low-stock">Low Stock (<= 5)</option>
+                                    <option value="zero-stock">Out of Stock (= 0)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-md-end">
+                            <select id="inventorySort" class="form-select form-select-sm" style="font-size: 0.82rem; border-radius: 8px;">
                                 <option value="default">Default Order</option>
-                                <option value="stock-desc">Highest Available Stock First</option>
-                                <option value="stock-asc">Lowest Available Stock First</option>
+                                <option value="stock-desc">Highest Stock First</option>
+                                <option value="stock-asc">Lowest Stock First</option>
                                 <option value="name-asc">Name (A-Z)</option>
                             </select>
                         </div>
                     </div>
                 </div>
-                <!-- Desktop view (>= 768px) -->
-                <div class="table-responsive d-none d-md-block" style="max-height: 550px; overflow-y: auto;">
-                    <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
-                        <thead class="thead-light sticky-top" style="z-index: 10;">
+
+                <!-- Stock Levels Table -->
+                <div class="table-responsive" style="max-height: 68vh; overflow-y: auto;">
+                    <table class="inventory-table align-middle">
+                        <thead class="sticky-top" style="z-index: 10;">
                             <tr>
-                                <th class="text-left pl-4 text-nowrap" style="width: 55%;">Item Name / Code</th>
-                                <th class="text-nowrap" style="width: 45%;">Available Stock</th>
+                                <th style="width: 45px;" class="text-center">#</th>
+                                <th>Material Name & Description</th>
+                                <th class="text-center" style="width: 120px;">UGVCL Code</th>
+                                <th class="text-center" style="width: 90px;">Unit</th>
+                                <th class="text-center" style="width: 140px;">Unit Price (₹)</th>
+                                <th class="text-center" style="width: 170px;">Available Stock</th>
+                                <th class="text-center" style="width: 100px;">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="inventoryTableBody">
                             {% if materials %}
-                                {% set active_count = namespace(value=0) %}
+                                {% set row_idx = namespace(val=0) %}
                                 {% for m in materials %}
                                     {% if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 %}
-                                        {% set active_count.value = active_count.value + 1 %}
-                                        <tr data-original-index="{{ loop.index }}">
-                                            <td class="text-left pl-4">
-                                                <div class="font-weight-bold text-navy" style="font-size: 15px;">{{ m.name }}</div>
-                                                <div class="text-muted text-sm mt-1">
-                                                    <span class="badge bg-light text-navy border mr-1">Code: <span class="mat-code-display">{{ m.item_code or 'N/A' }}</span></span>
-                                                    <span class="badge bg-light text-muted border">Unit: <span class="mat-unit-display">{{ m.unit }}</span></span>
-                                                </div>
-                                                <div class="text-muted text-sm mt-1">
-                                                    <span class="font-weight-medium">Price: ₹<span class="mat-price-display">{{ '%.2f'|format(m.unit_price or 0.0) }}</span></span>
-                                                    <button class="btn btn-xs btn-link p-0 ml-1 edit-material-btn" data-id="{{ m.id }}" data-name="{{ m.name }}" data-code="{{ m.item_code or '' }}" data-unit="{{ m.unit }}" data-price="{{ m.unit_price or 0.0 }}" title="Edit Material details">
-                                                        <i class="fas fa-edit text-primary"></i>
+                                        {% set row_idx.val = row_idx.val + 1 %}
+                                        {% set cur_st = m.current_stock | float %}
+                                        {% set cur_price = m.unit_price | float if m.unit_price else 0.0 %}
+                                        <tr data-original-index="{{ loop.index }}" data-stock="{{ cur_st }}" data-name="{{ m.name | lower }}" data-code="{{ (m.item_code or '') | lower }}">
+                                            <td class="text-center text-muted font-weight-bold" style="font-size: 0.75rem;">{{ row_idx.val }}</td>
+                                            <td>
+                                                <strong class="text-navy d-block" style="font-size: 0.92rem;">{{ m.name }}</strong>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-light text-navy border font-weight-medium px-2 py-1">
+                                                    <span class="mat-code-display">{{ m.item_code or 'N/A' }}</span>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <span class="badge bg-light-subtle text-dark border font-weight-bold px-2 py-1">
+                                                    <span class="mat-unit-display">{{ m.unit }}</span>
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="d-flex align-items-center justify-content-center gap-1">
+                                                    <span class="font-weight-bold text-navy">₹<span class="mat-price-display">{{ "{:,.2f}".format(cur_price) }}</span></span>
+                                                    <button type="button" class="btn btn-xs btn-link p-0 text-primary edit-material-btn" data-id="{{ m.id }}" data-name="{{ m.name }}" data-code="{{ m.item_code or '' }}" data-unit="{{ m.unit }}" data-price="{{ cur_price }}" title="Edit Rate & Details">
+                                                        <i class="fas fa-edit"></i>
                                                     </button>
                                                 </div>
                                             </td>
-                                            <td>
-                                                 <span class="view-ledger-btn font-weight-bold text-dark" style="font-size: 15px; cursor: pointer;" data-name="{{ m.name }}" title="Click to view ledger">
-                                                     {{ m.current_stock|float }}
-                                                 </span>
+                                            <td class="text-center">
+                                                <span class="stock-health-badge view-ledger-btn {% if cur_st <= 0 %}stock-health-zero{% elif cur_st <= 5 %}stock-health-low{% else %}stock-health-good{% endif %}" data-name="{{ m.name }}" title="Click to view Material Ledger">
+                                                    <i class="fas {% if cur_st <= 0 %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                                                    <span>{{ cur_st }}</span> {{ m.unit }}
+                                                </span>
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-xs btn-outline-navy font-weight-bold px-2 py-1 view-ledger-btn" data-name="{{ m.name }}" style="border-radius: 6px; font-size: 0.75rem;">
+                                                    <i class="fas fa-list-check mr-1"></i>Ledger
+                                                </button>
                                             </td>
                                         </tr>
                                     {% endif %}
                                 {% endfor %}
-                                {% if active_count.value == 0 %}
-                                    <tr>
-                                        <td colspan="2" class="text-center py-4 text-muted">No materials registered.</td>
-                                    </tr>
-                                {% endif %}
                             {% else %}
                                 <tr>
-                                    <td colspan="2" class="text-center py-4 text-muted">No materials registered.</td>
+                                    <td colspan="7" class="text-center py-5 text-muted">
+                                        <i class="fas fa-box-open fa-2x text-muted mb-2"></i>
+                                        <p class="m-0">No materials registered in inventory.</p>
+                                    </td>
                                 </tr>
                             {% endif %}
                         </tbody>
                     </table>
                 </div>
-
-                <!-- Mobile view (< 768px) -->
-                <div class="d-md-none px-2 py-2" id="inventory-mobile-cards">
-                    {% if materials %}
-                        {% set active_count_mob = namespace(value=0) %}
-                        {% for m in materials %}
-                            {% if m.opening_stock > 0 or m.received_qty > 0 or m.issued_qty > 0 %}
-                                {% set active_count_mob.value = active_count_mob.value + 1 %}
-                                <div class="mobile-card-item inventory-mobile-card" data-original-index="{{ loop.index }}">
-                                    <div class="card-title-row">
-                                        <div>
-                                            <span class="font-weight-bold text-navy mobile-mat-name" style="font-size: 15px;">{{ m.name }}</span>
-                                            <div class="mt-1">
-                                                <span class="badge bg-light text-navy border mr-1">Code: <span class="mobile-mat-code">{{ m.item_code or 'N/A' }}</span></span>
-                                                <span class="badge bg-light text-muted border">Unit: {{ m.unit }}</span>
-                                            </div>
-                                        </div>
-                                        <div>
-                                             <span class="badge bg-navy text-white px-2.5 py-1.5 font-weight-bold" style="font-size: 13px;">
-                                                 Stock: <span class="mobile-stock-qty">{{ m.current_stock|float }}</span>
-                                             </span>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card-row">
-                                        <span class="text-muted">Unit Price:</span>
-                                        <span class="font-weight-medium">
-                                            ₹<span class="mat-price-display">{{ '%.2f'|format(m.unit_price or 0.0) }}</span>
-                                            <button class="btn btn-xs btn-link p-0 ml-1 edit-material-btn" data-id="{{ m.id }}" data-name="{{ m.name }}" data-code="{{ m.item_code or '' }}" data-unit="{{ m.unit }}" data-price="{{ m.unit_price or 0.0 }}" title="Edit Material details">
-                                                <i class="fas fa-edit text-primary"></i>
-                                            </button>
-                                        </span>
-                                    </div>
-                                    
-
-                                </div>
-                            {% endif %}
-                        {% endfor %}
-                        {% if active_count_mob.value == 0 %}
-                            <div class="text-center py-4 text-muted">No materials registered.</div>
-                        {% endif %}
-                    {% else %}
-                        <div class="text-center py-4 text-muted">No materials registered.</div>
-                    {% endif %}
-                </div>
             </div>
         </div>
-    </div>
 
-    <!-- TAB 2: ADD STOCK (PHOTO/MANUAL) -->
-    <div class="tab-pane fade" id="add-stock" role="tabpanel" aria-labelledby="add-stock-tab">
-        <div class="row">
-            <!-- Left Side: Input options -->
-            <div class="col-lg-5">
-                <!-- PHOTO OCR UPLOADER -->
-                <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-file-pdf mr-2"></i>Option A: Upload UGVCL Gate Pass (PDF or Photo)</h3>
-                    </div>
-                    <div class="card-body">
-                        <p class="text-muted text-sm">Upload a PDF or clear photo of your UGVCL Gate Pass receipt. The system will automatically use OCR to parse MR numbers, item codes, descriptions, and quantities.</p>
-                        <form id="ocrUploadForm" enctype="multipart/form-data">
-                            <div class="form-group mb-3">
-                                <label for="gate_pass_file" class="form-label font-weight-bold">Select Gate Pass Document (PDF/Image)</label>
-                                <input type="file" class="form-control" id="gate_pass_file" name="file" accept="image/*,.pdf" capture="environment" required>
-
-                            </div>
-                            <button type="submit" class="btn btn-navy w-100 rounded-pill py-2">
-                                <i class="fas fa-wand-magic-sparkles mr-1"></i> Scan & Extract Items
-                            </button>
-                        </form>
-                        
-                        <div id="ocrLoading" class="text-center my-4 d-none">
-                            <div class="spinner-border text-navy mb-2" role="status"></div>
-                            <p class="mb-0 font-weight-medium text-navy">Running Tesseract OCR engine... please wait...</p>
+        <!-- ════════════════ TAB 2: INWARD STOCK (OCR & MANUAL) ════════════════ -->
+        <div class="tab-pane fade" id="add-stock" role="tabpanel" aria-labelledby="add-stock-tab">
+            <div class="row g-4">
+                
+                <!-- Left Column: Input Options -->
+                <div class="col-lg-5">
+                    
+                    <!-- OPTION A: UGVCL GATE PASS OCR DIGITIZER -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;">
+                        <div class="card-header bg-navy text-white p-3 d-flex align-items-center justify-content-between">
+                            <h6 class="font-weight-bold m-0"><i class="fas fa-wand-magic-sparkles mr-2 text-warning"></i>Option A: Scan UGVCL Gate Pass</h6>
+                            <span class="badge bg-warning text-dark font-weight-bold">AI OCR</span>
                         </div>
-                    </div>
-                </div>
-
-                <!-- MANUAL STOCK ENTRY -->
-                <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-keyboard mr-2"></i>Option B: Manual Stock Entry</h3>
-                    </div>
-                    <form action="{{ url_for('inventory.list_inventory') }}" method="POST">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="hidden" name="form_type" value="receipt">
-
-                        <div class="card-body">
-
-                            <div class="form-group mb-3">
-                                <label for="receipt_no" class="form-label font-weight-bold">Receipt/MR Number</label>
-                                <input type="text" name="receipt_no" class="form-control font-weight-bold" id="receipt_no" placeholder="e.g. MR-16535255" required autocomplete="off">
-                            </div>
-                            <div class="form-group mb-3">
-                                <label for="material" class="form-label font-weight-bold">Material Item</label>
-                                <select name="material" class="form-control" id="material" required>
-                                    {% for m in materials %}
-                                        <option value="{{ m.name }}" data-price="{{ m.unit_price }}">{{ m.name }} ({{ m.unit }})</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="row">
-                                <div class="col-6 form-group mb-3">
-                                    <label for="qty" class="form-label font-weight-bold">Quantity</label>
-                                    <input type="number" step="0.001" name="qty" class="form-control" id="qty" min="0.001" required>
+                        <div class="card-body p-4">
+                            <p class="text-muted text-xs mb-3">
+                                Upload a PDF or clear image of your UGVCL Gate Pass (MR). Our OCR engine will automatically extract MR number, item codes, and quantities.
+                            </p>
+                            <form id="ocrUploadForm" enctype="multipart/form-data">
+                                <div class="ocr-dropzone mb-3" onclick="$('#gate_pass_file').click()">
+                                    <i class="fas fa-cloud-arrow-up fa-2x text-primary mb-2"></i>
+                                    <div class="font-weight-bold text-navy" style="font-size: 0.88rem;">Click to select or drag Gate Pass file</div>
+                                    <div class="text-muted text-xxs mt-1">Supports PDF, JPG, PNG</div>
+                                    <input type="file" class="d-none" id="gate_pass_file" name="file" accept="image/*,.pdf" required onchange="$('#selected-file-label').text(this.files[0] ? this.files[0].name : '')">
+                                    <div id="selected-file-label" class="mt-2 text-xs font-weight-bold text-success"></div>
                                 </div>
-                                <div class="col-6 form-group mb-3">
-                                    <label for="rate" class="form-label font-weight-bold">Rate (₹)</label>
-                                    <input type="number" step="0.01" name="rate" class="form-control font-weight-bold text-navy" id="rate" value="0.00">
-                                </div>
-                            </div>
-                            <div class="form-group mb-3">
-                                <label for="date" class="form-label font-weight-bold">Receipt Date</label>
-                                <input type="date" name="date" class="form-control" id="date" value="{{ today_date }}" required>
-                            </div>
-                        </div>
-                        <div class="card-footer bg-white border-0 text-right">
-                            <button type="submit" class="btn btn-navy rounded-pill px-4">
-                                <i class="fas fa-save mr-1"></i> Save Receipt
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                <!-- OPTION C: RECORD MATERIAL ISSUE (DEBIT) -->
-                <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-circle-minus mr-2 text-danger"></i>Option C: Record Material Issue (Debit)</h3>
-                    </div>
-                    <form id="debitForm">
-                        <div class="card-body">
-                            <div class="form-group mb-3">
-                                <label for="debit_farmer_name" class="form-label font-weight-bold">Farmer Name</label>
-                                <input type="text" class="form-control font-weight-bold" id="debit_farmer_name" placeholder="e.g. NAYANKUMAR PATEL" required autocomplete="off">
-                            </div>
-                            <div class="row">
-                                <div class="col-6 form-group mb-3">
-                                    <label for="debit_po_no" class="form-label font-weight-bold">PO Number</label>
-                                    <input type="text" class="form-control" id="debit_po_no" placeholder="e.g. 102695" required autocomplete="off">
-                                </div>
-                                <div class="col-6 form-group mb-3">
-                                    <label for="debit_release_no" class="form-label font-weight-bold">Release No</label>
-                                    <input type="text" class="form-control" id="debit_release_no" placeholder="e.g. 1" required autocomplete="off">
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-6 form-group mb-3">
-                                    <label for="debit_date" class="form-label font-weight-bold">Issue Date</label>
-                                    <input type="date" class="form-control" id="debit_date" value="{{ today_date }}" required>
-                                </div>
-                                <div class="col-6 form-group mb-3">
-                                    <label for="debit_village" class="form-label font-weight-bold">Village (Optional)</label>
-                                    <input type="text" class="form-control" id="debit_village" placeholder="e.g. Bhildi" autocomplete="off">
-                                </div>
-                            </div>
+                                <button type="submit" class="btn btn-navy w-100 font-weight-bold py-2 shadow-sm" style="border-radius: 8px;">
+                                    <i class="fas fa-bolt mr-1 text-warning"></i> Scan & Extract Items
+                                </button>
+                            </form>
                             
-                            <h5 class="font-weight-bold text-navy border-bottom pb-2 mt-4"><i class="fas fa-list-ol mr-2 text-danger"></i>Items to Issue</h5>
-                            <div class="table-responsive">
-                                <table class="table table-bordered table-sm align-middle text-center" id="debit_items_table">
+                            <div id="ocrLoading" class="text-center my-4 d-none">
+                                <div class="spinner-border text-navy mb-2" role="status"></div>
+                                <p class="mb-0 font-weight-medium text-navy text-xs">Processing Gate Pass document... please wait...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OPTION B: MANUAL STOCK ENTRY -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;">
+                        <div class="card-header bg-white border-bottom p-3">
+                            <h6 class="font-weight-bold m-0 text-navy"><i class="fas fa-keyboard mr-2 text-primary"></i>Option B: Manual Stock Receipt Entry</h6>
+                        </div>
+                        <form action="{{ url_for('inventory.list_inventory') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="form_type" value="receipt">
+
+                            <div class="card-body p-4">
+                                <div class="form-group mb-3">
+                                    <label for="receipt_no" class="form-label font-weight-bold text-xs text-navy">Receipt / MR Number</label>
+                                    <input type="text" name="receipt_no" class="form-control font-weight-bold" id="receipt_no" placeholder="e.g. MR-16535255" required autocomplete="off" style="border-radius: 8px;">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="material" class="form-label font-weight-bold text-xs text-navy">Material Item</label>
+                                    <select name="material" class="form-select" id="material" required style="border-radius: 8px; font-size: 0.85rem;">
+                                        {% for m in materials %}
+                                            <option value="{{ m.name }}" data-price="{{ m.unit_price }}">{{ m.name }} ({{ m.unit }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6 form-group mb-3">
+                                        <label for="qty" class="form-label font-weight-bold text-xs text-navy">Quantity</label>
+                                        <input type="number" step="0.001" name="qty" class="form-control font-weight-bold" id="qty" min="0.001" placeholder="0.00" required style="border-radius: 8px;">
+                                    </div>
+                                    <div class="col-6 form-group mb-3">
+                                        <label for="rate" class="form-label font-weight-bold text-xs text-navy">Rate (₹)</label>
+                                        <input type="number" step="0.01" name="rate" class="form-control font-weight-bold text-navy" id="rate" value="0.00" style="border-radius: 8px;">
+                                    </div>
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="date" class="form-label font-weight-bold text-xs text-navy">Receipt Date</label>
+                                    <input type="date" name="date" class="form-control font-weight-bold" id="date" value="{{ today_date }}" required style="border-radius: 8px;">
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light p-3 border-top d-flex justify-content-end">
+                                <button type="submit" class="btn btn-navy font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                                    <i class="fas fa-save mr-1"></i> Save Receipt
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- OPTION C: SURPLUS CREDIT RETURN (CR) -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px;">
+                        <div class="card-header bg-white border-bottom p-3">
+                            <h6 class="font-weight-bold m-0 text-success"><i class="fas fa-rotate-left mr-2"></i>Option C: Record Surplus Return (CR)</h6>
+                        </div>
+                        <form action="{{ url_for('inventory.list_inventory') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="form_type" value="credit">
+
+                            <div class="card-body p-4">
+                                <div class="form-group mb-3">
+                                    <label for="cr_number" class="form-label font-weight-bold text-xs text-navy">Credit Receipt (CR Number)</label>
+                                    <input type="text" name="cr_number" class="form-control font-weight-bold" id="cr_number" placeholder="e.g. CR-98124" required autocomplete="off" style="border-radius: 8px;">
+                                </div>
+                                <div class="form-group mb-3">
+                                    <label for="cr_material" class="form-label font-weight-bold text-xs text-navy">Returned Material</label>
+                                    <select name="material" class="form-select" id="cr_material" required style="border-radius: 8px; font-size: 0.85rem;">
+                                        {% for m in materials %}
+                                            <option value="{{ m.name }}">{{ m.name }} ({{ m.unit }})</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-6 form-group mb-3">
+                                        <label for="cr_qty" class="form-label font-weight-bold text-xs text-navy">Returned Qty</label>
+                                        <input type="number" step="0.001" name="qty" class="form-control font-weight-bold text-success" id="cr_qty" min="0.001" placeholder="0.00" required style="border-radius: 8px;">
+                                    </div>
+                                    <div class="col-6 form-group mb-3">
+                                        <label for="cr_date" class="form-label font-weight-bold text-xs text-navy">Return Date</label>
+                                        <input type="date" name="date" class="form-control font-weight-bold" id="cr_date" value="{{ today_date }}" required style="border-radius: 8px;">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-light p-3 border-top d-flex justify-content-end">
+                                <button type="submit" class="btn btn-success font-weight-bold px-4 py-2" style="border-radius: 8px;">
+                                    <i class="fas fa-save mr-1"></i> Credit Back to Stock
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: OCR Extraction Preview & Approval Panel -->
+                <div class="col-lg-7">
+                    <div id="ocrPreviewCard" class="card border-0 shadow-sm mb-4 d-none" style="border-radius: 14px; overflow: hidden;">
+                        <div class="card-header bg-navy text-white p-3 d-flex align-items-center justify-content-between">
+                            <h6 class="font-weight-bold m-0"><i class="fas fa-magnifying-glass-chart mr-2 text-warning"></i>Scanned Gate Pass Details</h6>
+                            <span class="badge bg-info text-white font-weight-bold">Verification Mode</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <!-- Duplicate Warning -->
+                            <div id="ocrExistsAlert" class="alert alert-danger border-0 shadow-sm mb-3 d-none" style="border-radius: 8px;">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <strong>Warning:</strong> Receipt / MR #<span id="ocrExistsMrNum" class="font-weight-bold"></span> already exists in database.
+                            </div>
+
+                            <div class="row g-2 p-3 bg-light rounded mb-3">
+                                <div class="col-md-6 form-group">
+                                    <label class="form-label font-weight-bold text-xs text-navy">MR Number</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" id="gp_mr_number" class="form-control font-weight-bold text-navy">
+                                        <button class="btn btn-navy" type="button" id="lookupMrBtn">
+                                            <i class="fas fa-search-plus mr-1"></i>Fetch
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <label class="form-label font-weight-bold text-xs text-navy">Receipt Date</label>
+                                    <input type="date" id="gp_date" class="form-control form-control-sm" value="{{ today_date }}">
+                                </div>
+                            </div>
+
+                            <p class="text-xs text-muted mb-3">
+                                <i class="fas fa-info-circle mr-1 text-primary"></i>Verify extracted items and match them to database inventory items before approving.
+                            </p>
+
+                            <!-- Extracted Table -->
+                            <div class="table-responsive border rounded mb-3" style="max-height: 380px; overflow-y: auto;">
+                                <table class="table table-bordered table-sm align-middle text-center mb-0" id="ocr_items_table">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Material Item</th>
-                                            <th style="width: 150px;">Qty to Issue</th>
-                                            <th style="width: 50px;">Action</th>
+                                            <th>Code</th>
+                                            <th class="text-left" style="width: 230px;">Extracted Description</th>
+                                            <th>UOM</th>
+                                            <th style="width: 90px;">Qty</th>
+                                            <th>Map to Database Material</th>
+                                            <th style="width: 100px;">Rate (₹)</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="debit_items_body">
-                                        <tr class="debit-item-row">
-                                            <td>
-                                                <select class="form-control form-control-sm debit-item-select" required>
-                                                    <option value="" disabled selected>Select Material</option>
-                                                    {% for m in materials %}
-                                                        <option value="{{ m.name }}" data-unit="{{ m.unit }}">{{ m.name }} ({{ m.unit }})</option>
-                                                    {% endfor %}
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <div class="input-group input-group-sm">
-                                                    <input type="number" step="0.001" class="form-control debit-item-qty" min="0.001" placeholder="Qty" required>
-                                                    <span class="input-group-text debit-item-unit text-muted">-</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <button type="button" class="btn btn-sm btn-outline-danger remove-debit-row-btn" disabled>
-                                                    <i class="fas fa-trash-alt"></i>
-                                                </button>
-                                            </td>
-                                        </tr>
+                                    <tbody id="ocr_items_body">
+                                        <!-- Dynamic OCR items -->
                                     </tbody>
                                 </table>
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-navy mt-2 rounded-pill font-weight-bold" id="add-debit-row-btn">
-                                <i class="fas fa-plus-circle mr-1"></i> Add Another Item
+                            
+                            <input type="hidden" id="gp_vault_doc_id">
+
+                            <button type="button" id="saveOcrBtn" class="btn btn-success w-100 font-weight-bold py-2 shadow-sm" style="border-radius: 8px;">
+                                <i class="fas fa-check-circle mr-1"></i> Approve & Save Stock to Main Inventory
                             </button>
                         </div>
-                        <div class="card-footer bg-white border-0 text-right">
-                            <button type="submit" class="btn btn-danger rounded-pill px-4 font-weight-bold shadow-sm" id="saveDebitBtn">
-                                <i class="fas fa-save mr-1"></i> Save Debit / Material Issue
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Right Side: OCR Parsing Review Panel -->
-            <div class="col-lg-7">
-                <div id="ocrPreviewCard" class="card card-navy card-outline border-0 shadow-sm mb-4 d-none">
-                    <div class="card-header bg-white border-0 py-3 d-flex align-items-center justify-content-between">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-magnifying-glass-chart mr-2"></i>Scanned Gate Pass Details</h3>
-                        <span class="badge bg-info rounded-pill px-3 py-1">OCR Verification Mode</span>
-                    </div>
-                    <div class="card-body">
-                        <!-- Already Exists Warning Alert -->
-                        <div id="ocrExistsAlert" class="alert alert-danger border-0 shadow-sm rounded mb-4 d-none" role="alert">
-                            <i class="fas fa-exclamation-triangle mr-2 text-danger"></i>
-                            <strong>Warning:</strong> Receipt / MR Number #<span id="ocrExistsMrNum" class="font-weight-bold"></span> already exists in database. Saving this will duplicate stock quantities.
-                        </div>
-                        <!-- MR Meta Details -->
-                        <div class="row bg-light p-3 rounded mb-4">
-                            <div class="col-md-4 form-group">
-                                <label class="form-label font-weight-bold">MR Number</label>
-                                <div class="input-group input-group-sm">
-                                    <input type="text" id="gp_mr_number" class="form-control font-weight-bold text-navy">
-                                    <button class="btn btn-navy" type="button" id="lookupMrBtn" title="Fetch Pre-verified Items">
-                                        <i class="fas fa-search-plus"></i> Fetch
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="col-md-4 form-group">
-                                <label class="form-label font-weight-bold">Receipt Date</label>
-                                <input type="date" id="gp_date" class="form-control form-control-sm" value="{{ today_date }}">
-                            </div>
-
-                        </div>
-
-                        <p class="text-sm text-muted mb-3"><i class="fas fa-info-circle mr-1 text-primary"></i>Review the OCR-extracted items below. Match each item to the database inventory item (or create new material) and verify the quantity and pricing before saving.</p>
-
-                        <!-- Extracted Table -->
-                        <div class="table-responsive mb-4">
-                            <table class="table table-bordered table-sm align-middle text-center" id="ocr_items_table">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Code</th>
-                                        <th class="text-left" style="width: 250px;">Extracted Description</th>
-                                        <th>UOM</th>
-                                        <th style="width: 100px;">Qty Issued</th>
-                                        <th>Map to DB Material</th>
-                                        <th style="width: 110px;">Rate (₹)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ocr_items_body">
-                                    <!-- Extracted rows injected here -->
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <input type="hidden" id="gp_vault_doc_id">
-
-                        <button type="button" id="saveOcrBtn" class="btn btn-success w-100 rounded-pill py-2 font-weight-bold shadow-sm">
-                            <i class="fas fa-check-circle mr-1"></i> Approve & Save Stock to Main Inventory
-                        </button>
                     </div>
                 </div>
+
             </div>
         </div>
-    </div>
 
-    <!-- TAB 3: TRANSACTION HISTORY -->
-    <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-        <div class="row">
-            <!-- Receipts -->
-            <div class="col-md-7">
-                <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-receipt mr-2"></i>Material Receipts Logs</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <!-- Desktop view (>= 768px) -->
-                        <div class="table-responsive d-none d-md-block">
-                            <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>Receipt/MR No</th>
-                                        <th>Release Order</th>
-                                        <th class="text-left">Items Received</th>
-                                        <th>Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% if receipts %}
-                                        {% for r in receipts %}
+        <!-- ════════════════ TAB 3: TRANSACTION LOGS & AUDIT ════════════════ -->
+        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+            <div class="row g-4">
+                
+                <!-- Left: Material Receipts (MR) -->
+                <div class="col-md-7">
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px; overflow: hidden;">
+                        <div class="card-header bg-navy text-white p-3 d-flex align-items-center justify-content-between">
+                            <h6 class="font-weight-bold m-0"><i class="fas fa-receipt mr-2 text-warning"></i>Material Receipts (MR) Inflows</h6>
+                            <span class="badge bg-light text-navy font-weight-bold">{{ receipts|length }} Logs</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                                <table class="table table-hover align-middle mb-0 text-center">
+                                    <thead class="table-light">
                                         <tr>
-                                            <td class="font-weight-bold text-navy">{{ r.receipt_no }}</td>
-                                            <td>Release {{ r.release_order.release_no if r.release_order else 'N/A' }}</td>
-                                            <td class="text-left text-sm py-2" style="max-width: 380px;">
-                                                <div class="d-flex align-items-center justify-content-between">
-                                                    <span class="badge bg-success-subtle text-success border rounded-pill font-weight-bold px-2 py-1">
-                                                        <i class="fas fa-boxes-stacked mr-1"></i> {{ r.items|length }} Items
-                                                    </span>
-                                                    <button class="btn btn-xs btn-outline-navy px-2 rounded-pill font-weight-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#items-collapse-{{ r.id }}" aria-expanded="false" style="font-size: 11px;">
-                                                        <span class="show-text"><i class="fas fa-chevron-down mr-1"></i> Details</span>
-                                                        <span class="hide-text d-none"><i class="fas fa-chevron-up mr-1"></i> Hide</span>
-                                                    </button>
-                                                </div>
-                                                <div class="collapse mt-2" id="items-collapse-{{ r.id }}">
-                                                    <div class="card card-body bg-light border p-2 mb-0 shadow-sm rounded-3" style="max-height: 180px; overflow-y: auto; font-size: 12.5px;">
-                                                        {% for item in r.items %}
-                                                            <div class="d-flex justify-content-between align-items-start border-bottom py-1 {% if loop.last %}border-bottom-0{% endif %}">
-                                                                <span class="text-wrap font-weight-medium text-navy" style="max-width: 70%;">{{ item.material_name }}</span>
-                                                                <span class="font-weight-bold text-navy text-right" style="white-space: nowrap;">{{ item.qty|float }} (₹{{ '%.2f'|format(item.rate or 0.0) }})</span>
+                                            <th>MR Number</th>
+                                            <th class="text-left">Items Received</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if receipts %}
+                                            {% for r in receipts %}
+                                                <tr>
+                                                    <td class="font-weight-bold text-navy">{{ r.receipt_no }}</td>
+                                                    <td class="text-left text-sm py-2" style="max-width: 320px;">
+                                                        <div class="d-flex align-items-center justify-content-between">
+                                                            <span class="badge bg-success-subtle text-success border font-weight-bold px-2 py-1">
+                                                                {{ r.items|length }} Items
+                                                            </span>
+                                                            <button class="btn btn-xs btn-outline-navy px-2 font-weight-bold collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#items-collapse-{{ r.id }}" aria-expanded="false" style="font-size: 11px; border-radius: 6px;">
+                                                                <i class="fas fa-chevron-down mr-1"></i>Details
+                                                            </button>
+                                                        </div>
+                                                        <div class="collapse mt-2" id="items-collapse-{{ r.id }}">
+                                                            <div class="card card-body bg-light border p-2 mb-0 shadow-2xs" style="max-height: 160px; overflow-y: auto; font-size: 12px; border-radius: 8px;">
+                                                                {% for item in r.items %}
+                                                                    <div class="d-flex justify-content-between align-items-start border-bottom py-1 {% if loop.last %}border-bottom-0{% endif %}">
+                                                                        <span class="text-navy font-weight-medium text-wrap" style="max-width: 65%;">{{ item.material_name }}</span>
+                                                                        <span class="font-weight-bold text-navy" style="white-space: nowrap;">{{ item.qty|float }} (₹{{ '%.2f'|format(item.rate or 0.0) }})</span>
+                                                                    </div>
+                                                                {% endfor %}
                                                             </div>
-                                                        {% endfor %}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="text-muted">{{ r.date.strftime('%d-%b-%Y') }}</td>
-                                            <td>
-                                                <form action="{{ url_for('inventory.receipt_delete', receipt_id=r.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this receipt? The warehouse stock will be decreased.')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill" title="Delete Receipt">
-                                                        <i class="fas fa-trash-alt"></i> Delete
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr>
-                                            <td colspan="5" class="text-center py-4 text-muted">No Material Receipts recorded yet.</td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Mobile card view (< 768px) -->
-                        <div class="d-md-none px-2 py-2">
-                            {% if receipts %}
-                                {% for r in receipts %}
-                                <div class="mobile-card-item" style="border-left: 4px solid var(--navy-blue);">
-                                    <div class="card-title-row">
-                                        <div>
-                                            <span class="font-weight-bold text-navy" style="font-size: 14px;">MR No: {{ r.receipt_no }}</span>
-                                            <div class="text-xs text-muted mt-1">Release Order: Release {{ r.release_order.release_no if r.release_order else 'N/A' }}</div>
-                                        </div>
-                                        <span class="badge bg-light text-muted border">{{ r.date.strftime('%d-%b-%Y') }}</span>
-                                    </div>
-                                    
-                                    <div class="card-row">
-                                        <span class="text-muted">Items:</span>
-                                        <span class="badge bg-success-subtle text-success border rounded-pill font-weight-bold px-2 py-0.5">
-                                            <i class="fas fa-boxes-stacked mr-1"></i> {{ r.items|length }} Items
-                                        </span>
-                                    </div>
-                                    
-                                    <div class="mt-2">
-                                        <button class="btn btn-xs btn-outline-navy w-100 rounded-pill font-weight-bold collapsed mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#items-collapse-mob-{{ r.id }}" aria-expanded="false" style="font-size: 11px;">
-                                            <span class="show-text"><i class="fas fa-chevron-down mr-1"></i> View Items Details</span>
-                                            <span class="hide-text d-none"><i class="fas fa-chevron-up mr-1"></i> Hide Items Details</span>
-                                        </button>
-                                        <div class="collapse" id="items-collapse-mob-{{ r.id }}">
-                                            <div class="card card-body bg-light border p-2 mb-0 shadow-xs rounded-3" style="max-height: 180px; overflow-y: auto; font-size: 12px;">
-                                                {% for item in r.items %}
-                                                    <div class="d-flex justify-content-between align-items-start border-bottom py-1 {% if loop.last %}border-bottom-0{% endif %}">
-                                                        <span class="text-wrap font-weight-medium text-navy" style="max-width: 65%;">{{ item.material_name }}</span>
-                                                        <span class="font-weight-bold text-navy text-right" style="white-space: nowrap;">{{ item.qty|float }} (₹{{ '%.2f'|format(item.rate or 0.0) }})</span>
-                                                    </div>
-                                                {% endfor %}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="card-actions">
-                                        <form action="{{ url_for('inventory.receipt_delete', receipt_id=r.id) }}" method="POST" style="width: 100%;" onsubmit="return confirm('Are you sure you want to delete this receipt? The warehouse stock will be decreased.')">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill py-2 font-weight-bold">
-                                                <i class="fas fa-trash-alt mr-1"></i> Delete Receipt Log
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-center py-4 text-muted">No Material Receipts recorded yet.</div>
-                            {% endif %}
+                                                        </div>
+                                                    </td>
+                                                    <td class="text-muted text-xs font-weight-medium">{{ r.date.strftime('%d-%b-%Y') }}</td>
+                                                    <td>
+                                                        <form action="{{ url_for('inventory.receipt_delete', receipt_id=r.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this receipt? Warehouse stock will be decreased.')">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                            <button type="submit" class="btn btn-xs btn-outline-danger px-2" style="border-radius: 6px;" title="Delete Receipt">
+                                                                <i class="fas fa-trash-alt"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-muted">No Material Receipts recorded yet.</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Returns (CR) -->
-            <div class="col-md-5">
-                <div class="card card-navy card-outline border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-0 py-3">
-                        <h3 class="card-title font-weight-bold text-navy m-0"><i class="fas fa-undo mr-2"></i>Surplus Returns (Credit Receipts)</h3>
-                    </div>
-                    <div class="card-body p-0">
-                        <!-- Desktop view (>= 768px) -->
-                        <div class="table-responsive d-none d-md-block">
-                            <table class="table table-striped table-bordered table-valign-middle mb-0 text-center align-middle">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>CR Number</th>
-                                        <th class="text-left">Material Item</th>
-                                        <th>Returned Qty</th>
-                                        <th>Return Date</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% if credit_receipts %}
-                                        {% for cr in credit_receipts %}
-                                        <tr>
-                                            <td class="font-weight-bold text-navy">{{ cr.cr_number }}</td>
-                                            <td class="text-left">{{ cr.material_name }}</td>
-                                            <td><span class="text-success font-weight-bold">+{{ cr.qty }}</span></td>
-                                            <td class="text-muted">{{ cr.date.strftime('%d-%b-%Y') }}</td>
-                                            <td>
-                                                <form action="{{ url_for('inventory.credit_delete', credit_id=cr.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this credit return? The warehouse stock will be decreased.')">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill" title="Delete Return">
-                                                        <i class="fas fa-trash-alt"></i> Delete
-                                                    </button>
-                                                </form>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    {% else %}
-                                        <tr>
-                                            <td colspan="5" class="text-center py-4 text-muted">No Credit Receipts (CR) recorded.</td>
-                                        </tr>
-                                    {% endif %}
-                                </tbody>
-                            </table>
+                <!-- Right: Surplus Returns (CR) -->
+                <div class="col-md-5">
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 14px; overflow: hidden;">
+                        <div class="card-header bg-white border-bottom p-3 d-flex align-items-center justify-content-between">
+                            <h6 class="font-weight-bold m-0 text-success"><i class="fas fa-rotate-left mr-2"></i>Surplus Returns (CR)</h6>
+                            <span class="badge bg-light text-success border font-weight-bold">{{ credit_receipts|length }} Logs</span>
                         </div>
-
-                        <!-- Mobile card view (< 768px) -->
-                        <div class="d-md-none px-2 py-2">
-                            {% if credit_receipts %}
-                                {% for cr in credit_receipts %}
-                                <div class="mobile-card-item" style="border-left: 4px solid var(--success-green);">
-                                    <div class="card-title-row">
-                                        <div>
-                                            <span class="font-weight-bold text-navy" style="font-size: 14px;">CR No: {{ cr.cr_number }}</span>
-                                            <small class="text-muted d-block mt-1">{{ cr.date.strftime('%d-%b-%Y') }}</small>
-                                        </div>
-                                        <span class="badge bg-success text-white font-weight-bold" style="font-size: 13px;">+{{ cr.qty }} Qty</span>
-                                    </div>
-                                    
-                                    <div class="card-row">
-                                        <span class="text-muted">Material Item:</span>
-                                        <strong class="text-dark">{{ cr.material_name }}</strong>
-                                    </div>
-                                    
-                                    <div class="card-actions">
-                                        <form action="{{ url_for('inventory.credit_delete', credit_id=cr.id) }}" method="POST" style="width: 100%;" onsubmit="return confirm('Are you sure you want to delete this credit return? The warehouse stock will be decreased.')">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100 rounded-pill py-2 font-weight-bold">
-                                                <i class="fas fa-trash-alt mr-1"></i> Delete Return Record
-                                            </button>
-                                        </form>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            {% else %}
-                                <div class="text-center py-4 text-muted">No Credit Receipts (CR) recorded.</div>
-                            {% endif %}
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 60vh; overflow-y: auto;">
+                                <table class="table table-hover align-middle mb-0 text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>CR Number</th>
+                                            <th class="text-left">Material Item</th>
+                                            <th>Qty</th>
+                                            <th>Date</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if credit_receipts %}
+                                            {% for cr in credit_receipts %}
+                                                <tr>
+                                                    <td class="font-weight-bold text-navy">{{ cr.cr_number }}</td>
+                                                    <td class="text-left text-xs font-weight-semibold">{{ cr.material_name }}</td>
+                                                    <td><span class="text-success font-weight-bold">+{{ cr.qty }}</span></td>
+                                                    <td class="text-muted text-xs">{{ cr.date.strftime('%d-%b-%Y') }}</td>
+                                                    <td>
+                                                        <form action="{{ url_for('inventory.credit_delete', credit_id=cr.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this return record? Warehouse stock will be adjusted.')">
+                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                            <button type="submit" class="btn btn-xs btn-outline-danger px-2" style="border-radius: 6px;" title="Delete Return">
+                                                                <i class="fas fa-trash-alt"></i>
+                                                            </button>
+                                                        </form>
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="5" class="text-center py-4 text-muted">No Surplus Credit Returns recorded.</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
+
     </div>
+
 </div>
 
-<!-- Material Transaction History Modal -->
+<!-- ════════════════ MODALS ════════════════ -->
+
+<!-- 1. Material Transaction Ledger Modal -->
 <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-fullscreen-sm-down">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-navy text-white py-3">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-navy text-white p-3">
                 <h5 class="modal-title font-weight-bold" id="historyModalLabel">
-                    <i class="fas fa-history mr-2 text-warning"></i><span id="modalMaterialName">Material</span> History
+                    <i class="fas fa-history mr-2 text-warning"></i><span id="modalMaterialName">Material</span> Ledger
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
-                <!-- Nav tabs -->
-                <ul class="nav nav-tabs bg-light px-4 pt-2 border-bottom" id="modalTabs" role="tablist">
+                <ul class="nav nav-tabs bg-light px-3 pt-2 border-bottom" id="modalTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active font-weight-bold text-navy py-2" id="tab-ledger-link" data-bs-toggle="tab" data-bs-target="#tab-ledger" type="button" role="tab" aria-controls="tab-ledger" aria-selected="true">
                             <i class="fas fa-scale-balanced mr-1 text-primary"></i> Combined Ledger
@@ -614,22 +767,20 @@
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link font-weight-bold text-navy py-2" id="tab-credits-link" data-bs-toggle="tab" data-bs-target="#tab-credits" type="button" role="tab" aria-controls="tab-credits" aria-selected="false">
-                            <i class="fas fa-circle-plus mr-1 text-success"></i> Credit History
+                            <i class="fas fa-circle-plus mr-1 text-success"></i> Credits (Inflows)
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link font-weight-bold text-navy py-2" id="tab-debits-link" data-bs-toggle="tab" data-bs-target="#tab-debits" type="button" role="tab" aria-controls="tab-debits" aria-selected="false">
-                            <i class="fas fa-circle-minus mr-1 text-danger"></i> Debit History
+                            <i class="fas fa-circle-minus mr-1 text-danger"></i> Debits (Farmer Outflows)
                         </button>
                     </li>
                 </ul>
                 
-                <!-- Tab panes -->
-                <div class="tab-content p-4" id="modalTabsContent">
-                    <!-- Tab 1: Combined Ledger -->
-                    <div class="tab-pane fade show active" id="tab-ledger" role="tabpanel" aria-labelledby="tab-ledger-link">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalLedgerTable">
+                <div class="tab-content p-3" id="modalTabsContent">
+                    <div class="tab-pane fade show active" id="tab-ledger" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-striped table-bordered text-center align-middle mb-0" id="modalLedgerTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
@@ -638,17 +789,14 @@
                                         <th class="text-left">Source / Details</th>
                                     </tr>
                                 </thead>
-                                <tbody id="modalLedgerBody">
-                                    <!-- Dynamic rows -->
-                                </tbody>
+                                <tbody id="modalLedgerBody"></tbody>
                             </table>
                         </div>
                     </div>
                     
-                    <!-- Tab 2: Credit History -->
-                    <div class="tab-pane fade" id="tab-credits" role="tabpanel" aria-labelledby="tab-credits-link">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalCreditTable">
+                    <div class="tab-pane fade" id="tab-credits" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-striped table-bordered text-center align-middle mb-0" id="modalCreditTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
@@ -657,147 +805,138 @@
                                         <th>Details</th>
                                     </tr>
                                 </thead>
-                                <tbody id="modalCreditBody">
-                                    <!-- Dynamic rows -->
-                                </tbody>
+                                <tbody id="modalCreditBody"></tbody>
                             </table>
                         </div>
                     </div>
                     
-                    <!-- Tab 3: Debit History -->
-                    <div class="tab-pane fade" id="tab-debits" role="tabpanel" aria-labelledby="tab-debits-link">
-                        <div class="table-responsive">
-                            <table class="table table-striped table-bordered table-hover text-center align-middle" id="modalDebitTable">
+                    <div class="tab-pane fade" id="tab-debits" role="tabpanel">
+                        <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-striped table-bordered text-center align-middle mb-0" id="modalDebitTable">
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
                                         <th>Qty</th>
                                         <th>Farmer Name</th>
-                                        <th>Work Order / Sub-WO</th>
+                                        <th>RO / Work Order</th>
                                     </tr>
                                 </thead>
-                                <tbody id="modalDebitBody">
-                                    <!-- Dynamic rows -->
-                                </tbody>
+                                <tbody id="modalDebitBody"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+            <div class="modal-footer bg-light p-2 border-top">
+                <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Edit Material Modal -->
+<!-- 2. Edit Material Details Modal -->
 <div class="modal fade" id="editMaterialModal" tabindex="-1" aria-labelledby="editMaterialModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
-        <div class="modal-content border-0 shadow-lg">
-            <div class="modal-header bg-navy text-white py-3">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+            <div class="modal-header bg-navy text-white p-3">
                 <h5 class="modal-title font-weight-bold" id="editMaterialModalLabel">
                     <i class="fas fa-edit mr-2 text-warning"></i>Edit Material Details
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="editMaterialForm">
                 <input type="hidden" id="edit_material_id">
                 <div class="modal-body p-4">
                     <div class="form-group mb-3">
-                        <label for="edit_material_name" class="form-label font-weight-bold">Material Name</label>
-                        <input type="text" class="form-control font-weight-bold" id="edit_material_name" required>
+                        <label for="edit_material_name" class="form-label font-weight-bold text-xs text-navy">Material Name</label>
+                        <input type="text" class="form-control font-weight-bold" id="edit_material_name" required style="border-radius: 8px;">
                     </div>
                     <div class="form-group mb-3">
-                        <label for="edit_material_code" class="form-label font-weight-bold">Item Code/Number</label>
-                        <input type="text" class="form-control" id="edit_material_code" placeholder="e.g. 2601000040">
+                        <label for="edit_material_code" class="form-label font-weight-bold text-xs text-navy">Item Code / Number</label>
+                        <input type="text" class="form-control font-weight-medium" id="edit_material_code" placeholder="e.g. 2601000040" style="border-radius: 8px;">
                     </div>
                     <div class="form-group mb-3">
-                        <label for="edit_material_unit" class="form-label font-weight-bold">Unit</label>
-                        <input type="text" class="form-control" id="edit_material_unit" required>
+                        <label for="edit_material_unit" class="form-label font-weight-bold text-xs text-navy">Unit of Measurement</label>
+                        <input type="text" class="form-control font-weight-medium" id="edit_material_unit" required style="border-radius: 8px;">
                     </div>
                     <div class="form-group mb-3">
-                        <label for="edit_material_price" class="form-label font-weight-bold">Saved Price (₹ per Unit)</label>
+                        <label for="edit_material_price" class="form-label font-weight-bold text-xs text-navy">Unit Rate (₹ per Unit)</label>
                         <div class="input-group">
-                            <span class="input-group-text">₹</span>
-                            <input type="number" step="0.01" class="form-control font-weight-bold text-navy" id="edit_material_price" required>
+                            <span class="input-group-text bg-light font-weight-bold">₹</span>
+                            <input type="number" step="0.01" class="form-control font-weight-bold text-navy" id="edit_material_price" required style="border-radius: 0 8px 8px 0;">
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light py-2">
-                    <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-navy rounded-pill px-4 font-weight-bold">Save Changes</button>
+                <div class="modal-footer bg-light p-3 border-top d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-3" data-bs-dismiss="modal" style="border-radius: 8px;">Cancel</button>
+                    <button type="submit" class="btn btn-navy btn-sm font-weight-bold px-4" style="border-radius: 8px;">Save Changes</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
 
-<!-- All Credits History Modal -->
+<!-- 3. All Credits Record Modal -->
 <div class="modal fade" id="allCreditsModal" tabindex="-1" aria-labelledby="allCreditsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
-        <div class="modal-content border-0 shadow-lg" style="max-height: 85vh;">
-            <div class="modal-header bg-success text-white py-3">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; max-height: 85vh;">
+            <div class="modal-header bg-success text-white p-3">
                 <h5 class="modal-title font-weight-bold" id="allCreditsModalLabel">
-                    <i class="fas fa-history mr-2 text-warning"></i>Material Credits Record History
+                    <i class="fas fa-history mr-2 text-warning"></i>Material Credits & Inflow Logs
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3">
                 <div class="table-responsive">
-                    <table class="table table-striped table-bordered table-hover text-center align-middle" id="allCreditsTable">
+                    <table class="table table-striped table-bordered text-center align-middle mb-0" id="allCreditsTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Date</th>
                                 <th>Type</th>
-                                <th>Receipt/CR No</th>
+                                <th>Receipt / CR No</th>
                                 <th class="text-left" style="width: 45%;">Items Received</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="allCreditsBody">
-                            <!-- Dynamic credit records -->
-                        </tbody>
+                        <tbody id="allCreditsBody"></tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+            <div class="modal-footer bg-light p-2 border-top">
+                <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Close</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- All Debits History Modal -->
+<!-- 4. All Debits Record Modal -->
 <div class="modal fade" id="allDebitsModal" tabindex="-1" aria-labelledby="allDebitsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
-        <div class="modal-content border-0 shadow-lg" style="max-height: 85vh;">
-            <div class="modal-header bg-danger text-white py-3">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden; max-height: 85vh;">
+            <div class="modal-header bg-danger text-white p-3">
                 <h5 class="modal-title font-weight-bold" id="allDebitsModalLabel">
-                    <i class="fas fa-history mr-2 text-warning"></i>Material Debits Record History
+                    <i class="fas fa-history mr-2 text-warning"></i>Material Debits & Farmer Issue Logs
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" data-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body p-4">
+            <div class="modal-body p-3">
                 <div class="table-responsive">
-                    <table class="table table-striped table-bordered table-hover text-center align-middle" id="allDebitsTable">
+                    <table class="table table-striped table-bordered text-center align-middle mb-0" id="allDebitsTable">
                         <thead class="table-light">
                             <tr>
                                 <th>Date</th>
                                 <th>Farmer Name</th>
                                 <th>PO / Release No</th>
-                                <th class="text-left" style="width: 45%;">Items Used (Table)</th>
+                                <th class="text-left" style="width: 45%;">Items Used</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
-                        <tbody id="allDebitsBody">
-                            <!-- Dynamic debit records with nested tables -->
-                        </tbody>
+                        <tbody id="allDebitsBody"></tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer bg-light py-2">
-                <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal" data-dismiss="modal">Close</button>
+            <div class="modal-footer bg-light p-2 border-top">
+                <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Close</button>
             </div>
         </div>
     </div>
@@ -807,29 +946,18 @@
 
 {% block extra_js %}
 <script>
-    // Robust Modal Helper Function with BS5 and jQuery fallbacks
     function showModal(modalId) {
         var modalEl = document.getElementById(modalId);
         if (!modalEl) return;
-        
         try {
             if (window.bootstrap && window.bootstrap.Modal) {
-                var modalInst = bootstrap.Modal.getInstance(modalEl);
-                if (!modalInst) {
-                    modalInst = new bootstrap.Modal(modalEl);
-                }
-                modalInst.show();
+                bootstrap.Modal.getOrCreateInstance(modalEl).show();
                 return;
             }
-        } catch (e) {
-            console.error("BS5 modal init failed, trying jQuery fallback:", e);
-        }
-        
+        } catch (e) {}
         try {
             $(modalEl).modal('show');
-        } catch (e) {
-            console.error("jQuery modal fallback failed:", e);
-        }
+        } catch (e) {}
     }
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -843,27 +971,34 @@
             }
         });
 
-        // Search and Sort logic
+        // ── Search & Filter Logic ──
         var searchInput = $('#inventorySearch');
         var sortSelect = $('#inventorySort');
-        var tableBody = $('#stock-levels tbody');
+        var stockFilter = $('#stockFilter');
+        var tableBody = $('#inventoryTableBody');
 
         function filterAndSortTable() {
             var searchQuery = searchInput.val().toLowerCase().trim();
             var sortVal = sortSelect.val();
+            var filterVal = stockFilter.val();
             var rows = tableBody.find('tr').get();
 
-            // 1. Desktop Table filtering
             rows.forEach(function(row) {
                 var tr = $(row);
-                if (tr.find('td').length === 1 && tr.find('td').attr('colspan') === '2') {
-                    return;
-                }
+                if (tr.find('td').length === 1 && tr.find('td').attr('colspan')) return;
                 
-                var name = tr.find('.font-weight-bold.text-navy').text().toLowerCase();
-                var code = tr.find('.mat-code-display').text().toLowerCase();
+                var name = tr.attr('data-name') || '';
+                var code = tr.attr('data-code') || '';
+                var stock = parseFloat(tr.attr('data-stock')) || 0;
                 
-                if (name.indexOf(searchQuery) !== -1 || code.indexOf(searchQuery) !== -1) {
+                var matchesSearch = (!searchQuery || name.indexOf(searchQuery) !== -1 || code.indexOf(searchQuery) !== -1);
+                
+                var matchesFilter = true;
+                if (filterVal === 'in-stock') matchesFilter = (stock > 0);
+                else if (filterVal === 'low-stock') matchesFilter = (stock > 0 && stock <= 5);
+                else if (filterVal === 'zero-stock') matchesFilter = (stock <= 0);
+
+                if (matchesSearch && matchesFilter) {
                     tr.show();
                 } else {
                     tr.hide();
@@ -871,124 +1006,48 @@
             });
 
             var sortedRows = rows.filter(function(row) {
-                var tr = $(row);
-                return !(tr.find('td').length === 1 && tr.find('td').attr('colspan') === '2');
+                return !($(row).find('td').length === 1 && $(row).find('td').attr('colspan'));
             });
 
             sortedRows.sort(function(a, b) {
                 var trA = $(a);
                 var trB = $(b);
-                
-                if (sortVal === 'stock-desc') {
-                    var stockA = parseFloat(trA.find('td').eq(1).find('.view-ledger-btn').text()) || 0;
-                    var stockB = parseFloat(trB.find('td').eq(1).find('.view-ledger-btn').text()) || 0;
-                    return stockB - stockA;
-                } else if (sortVal === 'stock-asc') {
-                    var stockA = parseFloat(trA.find('td').eq(1).find('.view-ledger-btn').text()) || 0;
-                    var stockB = parseFloat(trB.find('td').eq(1).find('.view-ledger-btn').text()) || 0;
-                    return stockA - stockB;
-                } else if (sortVal === 'name-asc') {
-                    var nameA = trA.find('.font-weight-bold.text-navy').text().toLowerCase();
-                    var nameB = trB.find('.font-weight-bold.text-navy').text().toLowerCase();
-                    return nameA.localeCompare(nameB);
-                } else {
-                    return parseInt(trA.data('original-index')) - parseInt(trB.data('original-index'));
-                }
+                var stockA = parseFloat(trA.attr('data-stock')) || 0;
+                var stockB = parseFloat(trB.attr('data-stock')) || 0;
+                var nameA = trA.attr('data-name') || '';
+                var nameB = trB.attr('data-name') || '';
+
+                if (sortVal === 'stock-desc') return stockB - stockA;
+                if (sortVal === 'stock-asc') return stockA - stockB;
+                if (sortVal === 'name-asc') return nameA.localeCompare(nameB);
+                return parseInt(trA.data('original-index')) - parseInt(trB.data('original-index'));
             });
 
             $.each(sortedRows, function(index, row) {
                 tableBody.append(row);
             });
-
-            // 2. Mobile Cards filtering & sorting
-            var cards = $('.inventory-mobile-card').get();
-            cards.forEach(function(card) {
-                var cardEl = $(card);
-                var name = cardEl.find('.mobile-mat-name').text().toLowerCase();
-                var code = cardEl.find('.mobile-mat-code').text().toLowerCase();
-                if (name.indexOf(searchQuery) !== -1 || code.indexOf(searchQuery) !== -1) {
-                    cardEl.show();
-                } else {
-                    cardEl.hide();
-                }
-            });
-
-            cards.sort(function(a, b) {
-                var cardA = $(a);
-                var cardB = $(b);
-                if (sortVal === 'stock-desc') {
-                    var stockA = parseFloat(cardA.find('.mobile-stock-qty').text()) || 0;
-                    var stockB = parseFloat(cardB.find('.mobile-stock-qty').text()) || 0;
-                    return stockB - stockA;
-                } else if (sortVal === 'stock-asc') {
-                    var stockA = parseFloat(cardA.find('.mobile-stock-qty').text()) || 0;
-                    var stockB = parseFloat(cardB.find('.mobile-stock-qty').text()) || 0;
-                    return stockA - stockB;
-                } else if (sortVal === 'name-asc') {
-                    var nameA = cardA.find('.mobile-mat-name').text().toLowerCase();
-                    var nameB = cardB.find('.mobile-mat-name').text().toLowerCase();
-                    return nameA.localeCompare(nameB);
-                } else {
-                    return parseInt(cardA.data('original-index')) - parseInt(cardB.data('original-index'));
-                }
-            });
-
-            var mobileCardsContainer = $('#inventory-mobile-cards');
-            $.each(cards, function(index, card) {
-                mobileCardsContainer.append(card);
-            });
         }
 
         searchInput.on('input', filterAndSortTable);
         sortSelect.on('change', filterAndSortTable);
+        stockFilter.on('change', filterAndSortTable);
 
         // Pre-fill rate on manual material selection
         var materialSelect = document.getElementById('material');
         var rateInput = document.getElementById('rate');
-        
         function updateManualRate() {
-            var selectedOption = materialSelect.options[materialSelect.selectedIndex];
-            if (selectedOption) {
-                var price = selectedOption.getAttribute('data-price') || "0.00";
-                rateInput.value = parseFloat(price).toFixed(2);
+            if (materialSelect && rateInput) {
+                var selectedOption = materialSelect.options[materialSelect.selectedIndex];
+                if (selectedOption) {
+                    var price = selectedOption.getAttribute('data-price') || "0.00";
+                    rateInput.value = parseFloat(price).toFixed(2);
+                }
             }
         }
-        
-        materialSelect.addEventListener('change', updateManualRate);
-        updateManualRate(); // initial run
-
-        // Save Price Ajax (Fallback)
-        $(document).on('click', '.save-rate-btn', function() {
-            var matId = $(this).data('id');
-            var priceInput = $('.rate-input[data-id="' + matId + '"]');
-            var priceVal = parseFloat(priceInput.val()) || 0;
-            var btn = $(this);
-            
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
-            
-            $.ajax({
-                url: '/inventory/update-price',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify({ material_id: matId, price: priceVal }),
-                success: function(res) {
-                    btn.prop('disabled', false).html('<i class="fas fa-save"></i>');
-                    if (res.success) {
-                        var name = btn.closest('tr').find('td').first().text().trim();
-                        $('#material option[value="' + name + '"]').attr('data-price', priceVal);
-                        updateManualRate();
-                        priceInput.addClass('is-valid');
-                        setTimeout(function() { priceInput.removeClass('is-valid'); }, 2000);
-                    } else {
-                        alert('Error: ' + res.message);
-                    }
-                },
-                error: function() {
-                    btn.prop('disabled', false).html('<i class="fas fa-save"></i>');
-                    alert('Failed to update price.');
-                }
-            });
-        });
+        if (materialSelect) {
+            materialSelect.addEventListener('change', updateManualRate);
+            updateManualRate();
+        }
 
         // OCR Upload Form Submission
         var ocrUploadForm = document.getElementById('ocrUploadForm');
@@ -996,92 +1055,84 @@
         var ocrPreviewCard = document.getElementById('ocrPreviewCard');
         var allMaterialsGlobal = [];
 
-        ocrUploadForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            var formData = new FormData(this);
-            isOcrScanning = true;
-            ocrLoading.classList.remove('d-none');
-            ocrPreviewCard.classList.add('d-none');
-            
-            $.ajax({
-                url: '/inventory/upload-gate-pass',
-                method: 'POST',
-                processData: false,
-                contentType: false,
-                data: formData,
-                success: function(res) {
-                    isOcrScanning = false;
-                    ocrLoading.classList.add('d-none');
-                    if (res.success) {
-                        allMaterialsGlobal = res.all_materials;
-                        $('#gp_mr_number').val(res.mr_number);
-                        $('#gp_vault_doc_id').val(res.vault_doc_id);
-                        
-                        // Toggle duplicate MR warning
-                        if (res.already_exists) {
-                            $('#ocrExistsMrNum').text(res.mr_number);
-                            $('#ocrExistsAlert').removeClass('d-none');
-                        } else {
-                            $('#ocrExistsAlert').addClass('d-none');
-                        }
-                        
-                        var tbody = $('#ocr_items_body');
-                        tbody.empty();
-                        
-                        if (res.items.length === 0) {
-                            tbody.append('<tr><td colspan="6" class="text-center py-3 text-muted">No items extracted. Try uploading again or check image clarity.</td></tr>');
-                        } else {
-                            res.items.forEach(function(item, idx) {
-                                var bestMatchName = findBestMatch(item.description, item.uom, res.all_materials);
-                                var mappedPrice = 0.0;
-                                
-                                if (bestMatchName) {
-                                    var matchObj = res.all_materials.find(function(m) { return m.name === bestMatchName; });
-                                    if (matchObj) mappedPrice = matchObj.unit_price;
-                                }
-                                
-                                var selectOptions = '';
-                                res.all_materials.forEach(function(m) {
-                                    selectOptions += `<option value="${m.name}" data-unit="${m.unit}" data-price="${m.unit_price}">${m.name} (${m.unit})</option>`;
+        if (ocrUploadForm) {
+            ocrUploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var formData = new FormData(this);
+                isOcrScanning = true;
+                ocrLoading.classList.remove('d-none');
+                ocrPreviewCard.classList.add('d-none');
+                
+                $.ajax({
+                    url: '/inventory/upload-gate-pass',
+                    method: 'POST',
+                    processData: false,
+                    contentType: false,
+                    data: formData,
+                    success: function(res) {
+                        isOcrScanning = false;
+                        ocrLoading.classList.add('d-none');
+                        if (res.success) {
+                            allMaterialsGlobal = res.all_materials;
+                            $('#gp_mr_number').val(res.mr_number);
+                            $('#gp_vault_doc_id').val(res.vault_doc_id);
+                            
+                            if (res.already_exists) {
+                                $('#ocrExistsMrNum').text(res.mr_number);
+                                $('#ocrExistsAlert').removeClass('d-none');
+                            } else {
+                                $('#ocrExistsAlert').addClass('d-none');
+                            }
+                            
+                            var tbody = $('#ocr_items_body');
+                            tbody.empty();
+                            
+                            if (!res.items || res.items.length === 0) {
+                                tbody.append('<tr><td colspan="6" class="text-center py-3 text-muted">No items extracted. Try uploading again or check image clarity.</td></tr>');
+                            } else {
+                                res.items.forEach(function(item, idx) {
+                                    var selectOptions = '';
+                                    res.all_materials.forEach(function(m) {
+                                        selectOptions += `<option value="${m.name}" data-unit="${m.unit}" data-price="${m.unit_price}">${m.name} (${m.unit})</option>`;
+                                    });
+                                    
+                                    var rowHtml = `
+                                        <tr data-idx="${idx}">
+                                            <td class="font-weight-bold text-xs">${item.item_code}</td>
+                                            <td class="text-left font-weight-medium text-xs">${item.description}</td>
+                                            <td><span class="badge bg-light text-navy gp-uom">${item.uom}</span></td>
+                                            <td>
+                                                <input type="number" step="0.001" class="form-control form-control-sm text-center gp-qty font-weight-bold" value="${item.qty_issued}">
+                                            </td>
+                                            <td>
+                                                <select class="form-select form-select-sm gp-mapping-select" style="font-size: 0.8rem;">
+                                                    <option value="__NEW__" data-unit="${item.uom}" data-price="0.00" selected>Create New: "${item.description}"</option>
+                                                    ${selectOptions}
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="number" step="0.01" class="form-control form-control-sm text-center gp-rate font-weight-bold text-navy" value="0.00">
+                                            </td>
+                                        </tr>
+                                    `;
+                                    tbody.append(rowHtml);
                                 });
-                                
-                                var rowHtml = `
-                                    <tr data-idx="${idx}">
-                                        <td class="font-weight-bold">${item.item_code}</td>
-                                        <td class="text-left font-weight-medium">${item.description}</td>
-                                        <td><span class="badge bg-light text-navy gp-uom">${item.uom}</span></td>
-                                        <td>
-                                            <input type="number" step="0.001" class="form-control form-control-sm text-center gp-qty font-weight-bold" value="${item.qty_issued}">
-                                        </td>
-                                        <td>
-                                            <select class="form-control form-control-sm gp-mapping-select">
-                                                <option value="__NEW__" data-unit="${item.uom}" data-price="0.00" selected>Create New: "${item.description}"</option>
-                                                ${selectOptions}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-center gp-rate font-weight-bold text-navy" value="0.00">
-                                        </td>
-                                    </tr>
-                                `;
-                                tbody.append(rowHtml);
-                            });
+                            }
+                            
+                            ocrPreviewCard.classList.remove('d-none');
+                            document.getElementById('ocrPreviewCard').scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                            alert('Scanning failed: ' + res.message);
                         }
-                        
-                        ocrPreviewCard.classList.remove('d-none');
-                        document.getElementById('ocrPreviewCard').scrollIntoView({ behavior: 'smooth' });
-                    } else {
-                        alert('Scanning failed: ' + res.message);
+                    },
+                    error: function() {
+                        isOcrScanning = false;
+                        ocrLoading.classList.add('d-none');
+                        alert('Error scanning photo. Please check image size and quality.');
                     }
-                },
-                error: function() {
-                    isOcrScanning = false;
-                    ocrLoading.classList.add('d-none');
-                    alert('Error scanning photo. Please check image size and quality.');
-                }
+                });
             });
-        });
+        }
 
         // Manual lookup by MR Number
         $('#lookupMrBtn').on('click', function() {
@@ -1097,208 +1148,114 @@
                 url: '/inventory/lookup-gate-pass/' + encodeURIComponent(mr),
                 method: 'GET',
                 success: function(res) {
-                    btn.prop('disabled', false).html('<i class="fas fa-search-plus"></i> Fetch');
+                    btn.prop('disabled', false).html('<i class="fas fa-search-plus mr-1"></i>Fetch');
                     if (res.success) {
                         allMaterialsGlobal = res.all_materials;
                         $('#gp_mr_number').val(res.mr_number);
                         
-                        // Toggle duplicate MR warning
                         if (res.already_exists) {
                             $('#ocrExistsMrNum').text(res.mr_number);
                             $('#ocrExistsAlert').removeClass('d-none');
                         } else {
                             $('#ocrExistsAlert').addClass('d-none');
                         }
-                        
-                        var tbody = $('#ocr_items_body');
-                        tbody.empty();
-                        
-                        if (res.items.length === 0) {
-                            tbody.append('<tr><td colspan="6" class="text-center py-3 text-muted">No items extracted. Try uploading again or check image clarity.</td></tr>');
-                        } else {
-                            res.items.forEach(function(item, idx) {
-                                var bestMatchName = findBestMatch(item.description, item.uom, res.all_materials);
-                                var mappedPrice = 0.0;
-                                
-                                if (bestMatchName) {
-                                    var matchObj = res.all_materials.find(function(m) { return m.name === bestMatchName; });
-                                    if (matchObj) mappedPrice = matchObj.unit_price;
-                                }
-                                
-                                var selectOptions = '';
-                                res.all_materials.forEach(function(m) {
-                                    selectOptions += `<option value="${m.name}" data-unit="${m.unit}" data-price="${m.unit_price}">${m.name} (${m.unit})</option>`;
-                                });
-                                
-                                var rowHtml = `
-                                    <tr data-idx="${idx}">
-                                        <td class="font-weight-bold">${item.item_code}</td>
-                                        <td class="text-left font-weight-medium">${item.description}</td>
-                                        <td><span class="badge bg-light text-navy gp-uom">${item.uom}</span></td>
-                                        <td>
-                                            <input type="number" step="0.001" class="form-control form-control-sm text-center gp-qty font-weight-bold" value="${item.qty_issued}">
-                                        </td>
-                                        <td>
-                                            <select class="form-control form-control-sm gp-mapping-select">
-                                                <option value="__NEW__" data-unit="${item.uom}" data-price="0.00" selected>Create New: "${item.description}"</option>
-                                                ${selectOptions}
-                                            </select>
-                                        </td>
-                                        <td>
-                                            <input type="number" step="0.01" class="form-control form-control-sm text-center gp-rate font-weight-bold text-navy" value="0.00">
-                                        </td>
-                                    </tr>
-                                `;
-                                tbody.append(rowHtml);
-                            });
-                        }
-                        $('#gp_mr_number').addClass('is-valid');
-                        setTimeout(function() { $('#gp_mr_number').removeClass('is-valid'); }, 2000);
                     } else {
                         alert(res.message);
                     }
                 },
                 error: function() {
-                    btn.prop('disabled', false).html('<i class="fas fa-search-plus"></i> Fetch');
+                    btn.prop('disabled', false).html('<i class="fas fa-search-plus mr-1"></i>Fetch');
                     alert('Error checking MR number database.');
                 }
             });
         });
 
-        // Dynamic keypress duplicate MR checker
-        $('#gp_mr_number').on('input', function() {
-            var mr = $(this).val().trim();
-            if (mr.length >= 3) {
-                $.ajax({
-                    url: '/inventory/check-mr-exists/' + encodeURIComponent(mr),
-                    method: 'GET',
-                    success: function(res) {
-                        if (res.exists) {
-                            $('#ocrExistsMrNum').text(mr);
-                            $('#ocrExistsAlert').removeClass('d-none');
-                        } else {
-                            $('#ocrExistsAlert').addClass('d-none');
-                        }
-                    }
-                });
-            } else {
-                $('#ocrExistsAlert').addClass('d-none');
-            }
-        });
-
-        // Fuzzy match algorithm
-        function findBestMatch(desc, uom, materials) {
-            var cleanDesc = desc.toUpperCase();
-            var bestMatch = null;
-            var highestScore = 0;
-            
-            for (var i = 0; i < materials.length; i++) {
-                var mName = materials[i].name.toUpperCase();
-                
-                if (cleanDesc === mName) return materials[i].name;
-                
-                var descWords = cleanDesc.split(/[^A-Z0-9]+/);
-                var matches = 0;
-                descWords.forEach(function(w) {
-                    if (w.length > 2 && mName.indexOf(w) !== -1) {
-                        matches++;
-                    }
-                });
-                
-                if (matches > highestScore) {
-                    highestScore = matches;
-                    bestMatch = materials[i].name;
-                }
-            }
-            return bestMatch;
-        }
-
-        // Mapping selector change event
+        // Mapping selector change
         $(document).on('change', '.gp-mapping-select', function() {
             var selectedOpt = $(this).find('option:selected');
             var unit = selectedOpt.data('unit') || 'Nos';
             var rate = parseFloat(selectedOpt.data('price')) || 0.0;
             var tr = $(this).closest('tr');
-            
             tr.find('.gp-uom').text(unit);
             tr.find('.gp-rate').val(rate.toFixed(2));
         });
 
         // Approve and Save Gate Pass stock
         var saveOcrBtn = document.getElementById('saveOcrBtn');
-        saveOcrBtn.addEventListener('click', function() {
-            var mr = $('#gp_mr_number').val().trim();
-            var dateVal = $('#gp_date').val();
-            var roId = '';
-            var vaultId = $('#gp_vault_doc_id').val();
-            
-            if (!mr) {
-                alert('Please enter a valid Gate Pass/MR number.');
-                return;
-            }
-            
-            var items = [];
-            $('#ocr_items_body tr').each(function() {
-                var tr = $(this);
-                if (tr.find('td').length === 1) return;
+        if (saveOcrBtn) {
+            saveOcrBtn.addEventListener('click', function() {
+                var mr = $('#gp_mr_number').val().trim();
+                var dateVal = $('#gp_date').val();
+                var vaultId = $('#gp_vault_doc_id').val();
                 
-                var mappingVal = tr.find('.gp-mapping-select').val();
-                var isNew = mappingVal === '__NEW__';
-                var materialName = isNew ? tr.find('td').eq(1).text().trim() : mappingVal;
-                var qty = parseFloat(tr.find('.gp-qty').val()) || 0;
-                var rate = parseFloat(tr.find('.gp-rate').val()) || 0;
-                var unit = tr.find('.gp-uom').text().trim();
-                var itemCode = tr.find('td').first().text().trim();
+                if (!mr) {
+                    alert('Please enter a valid Gate Pass/MR number.');
+                    return;
+                }
                 
-                items.push({
-                    item_code: itemCode,
-                    material_name: materialName,
-                    qty: qty,
-                    rate: rate,
-                    is_new: isNew,
-                    unit: unit
+                var items = [];
+                $('#ocr_items_body tr').each(function() {
+                    var tr = $(this);
+                    if (tr.find('td').length === 1) return;
+                    
+                    var mappingVal = tr.find('.gp-mapping-select').val();
+                    var isNew = (mappingVal === '__NEW__');
+                    var materialName = isNew ? tr.find('td').eq(1).text().trim() : mappingVal;
+                    var qty = parseFloat(tr.find('.gp-qty').val()) || 0;
+                    var rate = parseFloat(tr.find('.gp-rate').val()) || 0;
+                    var unit = tr.find('.gp-uom').text().trim();
+                    var itemCode = tr.find('td').first().text().trim();
+                    
+                    items.push({
+                        item_code: itemCode,
+                        material_name: materialName,
+                        qty: qty,
+                        rate: rate,
+                        is_new: isNew,
+                        unit: unit
+                    });
                 });
-            });
-            
-            if (items.length === 0) {
-                alert('No items to save.');
-                return;
-            }
-            
-            saveOcrBtn.disabled = true;
-            saveOcrBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving items to database...';
-            
-            var payload = {
-                mr_number: mr,
-                date: dateVal,
-                release_order_id: roId,
-                items: items,
-                vault_doc_id: vaultId
-            };
-            
-            $.ajax({
-                url: '/inventory/save-gate-pass',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(payload),
-                success: function(res) {
-                    if (res.success) {
-                        window.location.reload();
-                    } else {
+                
+                if (items.length === 0) {
+                    alert('No items to save.');
+                    return;
+                }
+                
+                saveOcrBtn.disabled = true;
+                saveOcrBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> Saving items...';
+                
+                var payload = {
+                    mr_number: mr,
+                    date: dateVal,
+                    release_order_id: '',
+                    items: items,
+                    vault_doc_id: vaultId
+                };
+                
+                $.ajax({
+                    url: '/inventory/save-gate-pass',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function(res) {
+                        if (res.success) {
+                            window.location.reload();
+                        } else {
+                            saveOcrBtn.disabled = false;
+                            saveOcrBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Approve & Save Stock to Main Inventory';
+                            alert('Failed to save stock: ' + res.message);
+                        }
+                    },
+                    error: function() {
                         saveOcrBtn.disabled = false;
                         saveOcrBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Approve & Save Stock to Main Inventory';
-                        alert('Failed to save stock: ' + res.message);
+                        alert('Error saving gate pass data.');
                     }
-                },
-                error: function() {
-                    saveOcrBtn.disabled = false;
-                    saveOcrBtn.innerHTML = '<i class="fas fa-check-circle mr-1"></i> Approve & Save Stock to Main Inventory';
-                    alert('Error saving gate pass data.');
-                }
+                });
             });
-        });
+        }
 
-        // Edit Material Button Event
+        // Edit Material Button
         $(document).on('click', '.edit-material-btn', function() {
             var id = $(this).data('id');
             var name = $(this).data('name');
@@ -1344,96 +1301,6 @@
             });
         });
 
-        // Debit Form row dynamic behavior
-        $('#add-debit-row-btn').on('click', function() {
-            var newRow = $('.debit-item-row').first().clone();
-            newRow.find('select').val('');
-            newRow.find('input').val('');
-            newRow.find('.debit-item-unit').text('-');
-            newRow.find('.remove-debit-row-btn').prop('disabled', false);
-            $('#debit_items_body').append(newRow);
-        });
-
-        $(document).on('click', '.remove-debit-row-btn', function() {
-            if ($('.debit-item-row').length > 1) {
-                $(this).closest('tr').remove();
-            }
-        });
-
-        $(document).on('change', '.debit-item-select', function() {
-            var unit = $(this).find('option:selected').data('unit') || '-';
-            $(this).closest('tr').find('.debit-item-unit').text(unit);
-        });
-
-        // Save Debit Form Submit handler
-        $('#debitForm').on('submit', function(e) {
-            e.preventDefault();
-            
-            var items = [];
-            var hasDuplicates = false;
-            var selectedNames = new Set();
-            
-            $('.debit-item-row').each(function() {
-                var select = $(this).find('.debit-item-select');
-                var qtyInput = $(this).find('.debit-item-qty');
-                
-                var matName = select.val();
-                var qty = parseFloat(qtyInput.val()) || 0;
-                
-                if (matName) {
-                    if (selectedNames.has(matName)) {
-                        hasDuplicates = true;
-                    }
-                    selectedNames.add(matName);
-                    items.push({
-                        material_name: matName,
-                        qty: qty
-                    });
-                }
-            });
-            
-            if (hasDuplicates) {
-                alert('Please check for duplicate items in the debit list.');
-                return;
-            }
-            
-            if (items.length === 0) {
-                alert('Please add at least one item.');
-                return;
-            }
-            
-            var payload = {
-                farmer_name: $('#debit_farmer_name').val(),
-                village: $('#debit_village').val(),
-                po_no: $('#debit_po_no').val(),
-                release_no: $('#debit_release_no').val(),
-                date: $('#debit_date').val(),
-                items: items
-            };
-            
-            var btn = $('#saveDebitBtn');
-            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin mr-1"></i> Saving...');
-            
-            $.ajax({
-                url: '/inventory/save-debit',
-                method: 'POST',
-                contentType: 'application/json',
-                data: JSON.stringify(payload),
-                success: function(res) {
-                    if (res.success) {
-                        window.location.reload();
-                    } else {
-                        btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Debit / Material Issue');
-                        alert('Error: ' + res.message);
-                    }
-                },
-                error: function() {
-                    btn.prop('disabled', false).html('<i class="fas fa-save mr-1"></i> Save Debit / Material Issue');
-                    alert('Failed to save debit.');
-                }
-            });
-        });
-
         // View Full Credit History Modal
         $('#view-all-credits-btn').on('click', function(e, filterName) {
             var creditFilterName = filterName || null;
@@ -1458,13 +1325,11 @@
                                 if (creditFilterName) {
                                     var cleanFilter = creditFilterName.trim().toLowerCase();
                                     var cleanItemName = item.material_name.trim().toLowerCase();
-                                    if (cleanItemName.indexOf(cleanFilter) === -1) {
-                                        match = false;
-                                    }
+                                    if (cleanItemName.indexOf(cleanFilter) === -1) match = false;
                                 }
                                 if (match) {
                                     recordMatches = true;
-                                    itemsHtml += `<div class="mb-1 text-sm"><i class="fas fa-caret-right text-success mr-1"></i> ${item.material_name} (<b>${item.qty}</b> @ ₹${parseFloat(item.rate).toFixed(2)})</div>`;
+                                    itemsHtml += `<div class="mb-1 text-xs"><i class="fas fa-caret-right text-success mr-1"></i> ${item.material_name} (<b>${item.qty}</b> @ ₹${parseFloat(item.rate).toFixed(2)})</div>`;
                                 }
                             });
                             
@@ -1479,9 +1344,9 @@
                                         <td class="text-left py-2">${itemsHtml}</td>
                                         <td>
                                             <form action="${deleteUrl}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this credit record? Stock will be adjusted.')">
-                                                <input type="hidden" name="csrf_token" value="${$('meta[name=csrf-token]').attr('content')}"/>
-                                                <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill">
-                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-xs btn-outline-danger px-2" style="border-radius: 6px;">
+                                                    <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
                                         </td>
@@ -1502,7 +1367,7 @@
             });
         });
 
-        // View Full Debit History Modal with Nested Tables
+        // View Full Debit History Modal
         $('#view-all-debits-btn').on('click', function(e, filterName) {
             var debitFilterName = filterName || null;
             var tbody = $('#allDebitsBody');
@@ -1526,16 +1391,14 @@
                                 if (debitFilterName) {
                                     var cleanFilter = debitFilterName.trim().toLowerCase();
                                     var cleanItemName = item.material_name.trim().toLowerCase();
-                                    if (cleanItemName.indexOf(cleanFilter) === -1) {
-                                        match = false;
-                                    }
+                                    if (cleanItemName.indexOf(cleanFilter) === -1) match = false;
                                 }
                                 if (match) {
                                     recordMatches = true;
                                     nestedRows += `
                                         <tr>
-                                            <td class="text-left text-sm font-weight-medium">${item.material_name}</td>
-                                            <td class="font-weight-bold text-danger text-sm" style="width: 100px;">${item.qty}</td>
+                                            <td class="text-left text-xs font-weight-medium">${item.material_name}</td>
+                                            <td class="font-weight-bold text-danger text-xs" style="width: 100px;">${item.qty}</td>
                                         </tr>
                                     `;
                                 }
@@ -1560,18 +1423,17 @@
                                 tbody.append(`
                                     <tr>
                                         <td><small class="font-weight-medium">${d.date}</small></td>
-                                        <td class="font-weight-bold text-navy text-sm">${d.farmer_name}</td>
+                                        <td class="font-weight-bold text-navy text-xs">${d.farmer_name}</td>
                                         <td>
                                             <span class="badge bg-navy text-warning border">WO: ${d.work_order_no || 'N/A'}</span><br>
-                                            <span class="badge bg-light text-navy border mt-1">PO: ${d.po_no}</span><br>
-                                            <span class="badge bg-light text-muted border mt-1">RO: ${d.release_no}</span>
+                                            <span class="badge bg-light text-navy border mt-1">PO: ${d.po_no}</span>
                                         </td>
                                         <td class="text-left py-2">${nestedTable}</td>
                                         <td>
                                             <form action="/inventory/debit/delete/${d.id}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this debit record? Stock will be restored.')">
-                                                <input type="hidden" name="csrf_token" value="${$('meta[name=csrf-token]').attr('content')}"/>
-                                                <button type="submit" class="btn btn-sm btn-outline-danger px-2 rounded-pill">
-                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                                <button type="submit" class="btn btn-xs btn-outline-danger px-2" style="border-radius: 6px;">
+                                                    <i class="fas fa-trash-alt"></i>
                                                 </button>
                                             </form>
                                         </td>
@@ -1590,17 +1452,6 @@
                     tbody.html('<tr><td colspan="5" class="text-center py-4 text-danger">Failed to load debit history.</td></tr>');
                 }
             });
-        });
-
-        // Filter full Credit/Debit Modals dynamically on row-level History button clicks
-        $(document).on('click', '.view-credits-btn', function() {
-            var matName = $(this).data('name');
-            $('#view-all-credits-btn').trigger('click', [matName]);
-        });
-
-        $(document).on('click', '.view-debits-btn', function() {
-            var matName = $(this).data('name');
-            $('#view-all-debits-btn').trigger('click', [matName]);
         });
 
         // Row Ledger Modal click handler
@@ -1622,10 +1473,9 @@
                 method: 'GET',
                 success: function(res) {
                     if (res.success) {
-                        // 1. Render Combined Ledger
                         var ledgerBody = $('#modalLedgerBody');
                         ledgerBody.empty();
-                        if (res.ledger.length === 0) {
+                        if (!res.ledger || res.ledger.length === 0) {
                             ledgerBody.append('<tr><td colspan="4" class="text-center py-4 text-muted">No transaction ledger records found.</td></tr>');
                         } else {
                             res.ledger.forEach(function(l) {
@@ -1640,10 +1490,9 @@
                             });
                         }
 
-                        // 2. Render Credits
                         var creditBody = $('#modalCreditBody');
                         creditBody.empty();
-                        if (res.credits.length === 0) {
+                        if (!res.credits || res.credits.length === 0) {
                             creditBody.append('<tr><td colspan="4" class="text-center py-4 text-muted">No credit records found.</td></tr>');
                         } else {
                             res.credits.forEach(function(c) {
@@ -1658,10 +1507,9 @@
                             });
                         }
                         
-                        // 3. Render Debits
                         var debitBody = $('#modalDebitBody');
                         debitBody.empty();
-                        if (res.debits.length === 0) {
+                        if (!res.debits || res.debits.length === 0) {
                             debitBody.append('<tr><td colspan="4" class="text-center py-4 text-muted">No debit records found.</td></tr>');
                         } else {
                             res.debits.forEach(function(d) {
@@ -1669,7 +1517,7 @@
                                     <tr>
                                         <td><small class="font-weight-medium">${d.date}</small></td>
                                         <td class="font-weight-bold text-danger">-${d.qty}</td>
-                                        <td class="font-weight-medium text-navy text-sm">${d.farmer}</td>
+                                        <td class="font-weight-medium text-navy text-xs">${d.farmer}</td>
                                         <td>
                                             <span class="badge bg-navy text-warning border">WO: ${d.work_order_no || 'N/A'}</span><br>
                                             <span class="badge bg-light text-muted border mt-1">RO: ${d.release_no}</span>
